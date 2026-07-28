@@ -14,6 +14,11 @@ local function safe_close_buf(buf)
   end
 end
 
+-- Escape line endings so a multi-line prompt can be sent as a single line.
+local function escape_line_endings(s)
+  return s:gsub('\n', '\\n'):gsub('\r', '\\r')
+end
+
 -- Safely send data to a channel/job, ignoring errors if it no longer exists.
 local function safe_chansend(id, data)
   if not id or id <= 0 then
@@ -43,9 +48,10 @@ local function open_terminal(cmd, prepared_prompt, make_win)
   local job_id = vim.b[buf].terminal_job_id
 
   -- Send the prepared prompt once the terminal is ready.
+  -- Line endings are escaped so the whole prompt arrives as one input line.
   if prepared_prompt and prepared_prompt ~= '' and job_id and job_id > 0 then
     vim.defer_fn(function()
-      safe_chansend(job_id, prepared_prompt .. '\n')
+      safe_chansend(job_id, escape_line_endings(prepared_prompt) .. '\n')
     end, 100)
   end
 
