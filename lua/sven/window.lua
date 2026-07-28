@@ -38,8 +38,9 @@ local function create_appender(buf)
     return s:gsub('%s+', ' '):gsub('^%s*(.-)%s*$', '%1')
   end
 
-  local append
-  append = function(text)
+  local last_user_content = nil
+
+  local function append(text)
     if not vim.api.nvim_buf_is_valid(buf) then
       return
     end
@@ -55,8 +56,8 @@ local function create_appender(buf)
       -- Drop User: lines whose content matches the last thing we sent,
       -- even if whitespace differs. This prevents stdin echo from
       -- duplicating the prompt in the output buffer.
-      if user_content and append.last_user_content then
-        if normalize(user_content) == normalize(append.last_user_content) then
+      if user_content and last_user_content then
+        if normalize(user_content) == normalize(last_user_content) then
           goto continue
         end
       end
@@ -87,7 +88,13 @@ local function create_appender(buf)
     end
   end
 
-  append.last_user_content = nil
+  -- Expose a setter so send_input can tell the appender what the user
+  -- last typed, without relying on function fields (which are not
+  -- accessible inside the function's own definition in some Lua versions).
+  append.set_last_user_content = function(content)
+    last_user_content = content
+  end
+
   return append
 end
 
@@ -123,7 +130,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     -- Send the whole message as one input line so multi-line prepared
     -- prompts are not processed line-by-line by the sven REPL.
     local single_line = text:gsub('\n', ' ')
-    append.last_user_content = single_line
+    append.set_last_user_content(single_line)
     append('User: ' .. single_line)
     append('')
     if job_id and job_id > 0 then
