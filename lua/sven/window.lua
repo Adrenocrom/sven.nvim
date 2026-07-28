@@ -104,14 +104,8 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
       end
       append(data[#data] or '')
     end,
-    on_stderr = function(_, data, _)
-      if not data then
-        return
-      end
-      for i = 1, #data - 1 do
-        append('_stderr: ' .. data[i] .. '_\n')
-      end
-      append('_stderr: ' .. (data[#data] or '') .. '_')
+    on_stderr = function(_, _, _)
+      -- stderr is intentionally hidden
     end,
     on_exit = function(_, exit_code, _)
       append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
