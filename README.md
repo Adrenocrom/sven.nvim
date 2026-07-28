@@ -94,7 +94,3 @@ Inside the terminal window:
 ## Why no temp file?
 
 `sven` is an interactive tool. This plugin runs it directly in a Neovim `:terminal` buffer via `termopen('sven', ...)`. There is no need to capture output to a temporary file because the terminal itself is the interface.
-
-## License
-
-MIT
