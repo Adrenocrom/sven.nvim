@@ -39,7 +39,7 @@ local function create_appender(buf)
   end
 
   local function normalize(s)
-    return s:gsub('%s+', ' '):gsub('^%s*(.-)%s*$', '%1')
+    return s:gsub('%s+', ' '):gsub('^%s*(.-)%s*$', '%1'):lower()
   end
 
   local function append(text)
@@ -65,6 +65,7 @@ local function create_appender(buf)
       -- duplicating the prompt in the output buffer.
       if user_content and last_user_content then
         if normalize(user_content) == normalize(last_user_content) then
+          last_user_content = nil
           goto continue
         end
       end
