@@ -31,7 +31,7 @@ local function create_appender(buf)
   local last_was_blank = true
   local last_user_line = nil
 
-  local function is_blank_line(line)
+  local function is_blank_user_line(line)
     return line:match('^%s*$') ~= nil or line:match('^%s*User:%s*$') ~= nil
   end
 
@@ -39,7 +39,7 @@ local function create_appender(buf)
     local count = vim.api.nvim_buf_line_count(buf_handle)
     while count > 1 do
       local last = vim.api.nvim_buf_get_lines(buf_handle, count - 2, count - 1, false)[1]
-      if is_blank_line(last) then
+      if is_blank_user_line(last) then
         vim.api.nvim_buf_set_lines(buf_handle, count - 2, count - 1, false, {})
         count = count - 1
       else
@@ -71,7 +71,7 @@ local function create_appender(buf)
         goto continue
       end
 
-      local is_blank = is_blank_line(line)
+      local is_blank = is_blank_user_line(line)
       if not (is_blank and last_was_blank) then
         table.insert(filtered, line)
         last_was_blank = is_blank
