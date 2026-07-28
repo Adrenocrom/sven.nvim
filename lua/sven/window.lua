@@ -31,15 +31,32 @@ local function create_appender(buf)
   local last_was_blank = true
   local last_user_line = nil
 
-  local function is_blank_user_line(line)
-    return line:match('^%s*User:%s*$') ~= nil
+  local function is_blank_line(line)
+    return line:match('^%s*$') ~= nil
   end
 
+  -- Collapse consecutive blank lines in a list, leaving at most one.
+  local function collapse_blank_lines(lines)
+    local collapsed = {}
+    local prev_blank = false
+    for _, line in ipairs(lines) do
+      local blank = is_blank_line(line)
+      if blank and prev_blank then
+        -- skip repeated blank line
+      else
+        table.insert(collapsed, line)
+        prev_blank = blank
+      end
+    end
+    return collapsed
+  end
+
+  -- Trim trailing blank lines from the buffer, leaving at most one.
   local function trim_trailing_blank(buf_handle)
     local count = vim.api.nvim_buf_line_count(buf_handle)
     while count > 1 do
       local last = vim.api.nvim_buf_get_lines(buf_handle, count - 2, count - 1, false)[1]
-      if is_blank_user_line(last) then
+      if is_blank_line(last) then
         vim.api.nvim_buf_set_lines(buf_handle, count - 2, count - 1, false, {})
         count = count - 1
       else
@@ -49,7 +66,7 @@ local function create_appender(buf)
   end
 
   -- Remove a trailing empty "User:" line that sven prints before the
-  -- next prompt. This is the line before the final cursor/blank line.
+  -- next prompt.
   local function trim_trailing_user(buf_handle)
     trim_trailing_blank(buf_handle)
     local count = vim.api.nvim_buf_line_count(buf_handle)
@@ -62,6 +79,8 @@ local function create_appender(buf)
   end
 
   local function flush(lines)
+    lines = collapse_blank_lines(lines)
+
     local filtered = {}
     for _, line in ipairs(lines) do
       local user_content = line:match('^%s*User:%s*(.*)$')
@@ -71,7 +90,7 @@ local function create_appender(buf)
         goto continue
       end
 
-      local is_blank = is_blank_user_line(line)
+      local is_blank = is_blank_line(line)
       if not (is_blank and last_was_blank) then
         table.insert(filtered, line)
         last_was_blank = is_blank
@@ -167,10 +186,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     end,
     on_stderr = function(_, _, _)
       -- stderr is intentionally hidden
-    end,
-    on_exit = function(_, exit_code, _)
-      append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
-      job_id = nil
     end,
     on_exit = function(_, exit_code, _)
       append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
