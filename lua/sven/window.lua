@@ -55,6 +55,11 @@ local function create_appender(buf)
     for _, line in ipairs(lines) do
       local user_content = line:match('^%s*User:%s*(.-)%s*$')
 
+      -- Drop empty User: prompts emitted by the sven REPL.
+      if user_content and user_content == '' then
+        goto continue
+      end
+
       -- Drop User: lines whose content matches the last thing we sent,
       -- even if whitespace differs. This prevents stdin echo from
       -- duplicating the prompt in the output buffer.
