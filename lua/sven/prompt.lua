@@ -28,8 +28,12 @@ local function escape_repl(s)
 end
 
 -- Plain-text replacement: replace all occurrences of `pattern` in `str` with `repl`.
+-- Uses a replacement function so gsub never interprets percent signs in `repl`
+-- as capture references.
 local function replace_all(str, pattern, repl)
-  return str:gsub(pattern, escape_repl(repl))
+  return str:gsub(pattern, function()
+    return repl
+  end)
 end
 
 -- Build a prepared prompt for sven.
