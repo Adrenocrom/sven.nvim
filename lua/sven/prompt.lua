@@ -49,21 +49,11 @@ function M.build(bufnr, user_prompt, template)
     filepath = '[unnamed]'
   end
   local content = get_buffer_content(bufnr)
-
-  print(filetype)
-  print("-----")
   local result = template
   result = replace_all(result, '{{filetype}}', filetype)
-  print(filetype)
-  print(result)
   result = replace_all(result, '{{filepath}}', filepath)
-  print(filepath)
-  print(result)
-  print(result)
   result = replace_all(result, '{{content}}', content)
-  print(result)
   result = replace_all(result, '{{prompt}}', user_prompt)
-  print(result)
 
   -- Sanitize the final prompt so line breaks are escaped before sending it
   -- to a terminal process. This keeps the whole prompt as one input.
@@ -71,7 +61,7 @@ function M.build(bufnr, user_prompt, template)
 end
 
 function M.default_template()
-  return "Filetype: {{filetype}}\nFilepath: {{filepath}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}"
+  return "Regarding the following text, {{prompt}}:\n{{content}}"
 end
 
 -- Print the prepared prompt for the current buffer to :messages.
