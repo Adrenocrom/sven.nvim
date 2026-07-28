@@ -51,6 +51,7 @@ function M.build(bufnr, user_prompt, template)
   result = replace_all(result, '{{filepath}}', filepath)
   result = replace_all(result, '{{content}}', content)
   result = replace_all(result, '{{prompt}}', user_prompt)
+  print(result)
 
   -- Sanitize the final prompt so line breaks are escaped before sending it
   -- to a terminal process. This keeps the whole prompt as one input.
