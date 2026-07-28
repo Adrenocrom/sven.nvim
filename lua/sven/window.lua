@@ -82,9 +82,12 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     if not text or text == '' then
       return
     end
-    append('**You:** ' .. text .. '\n\n')
+    -- Send the whole message as one input line so multi-line prepared
+    -- prompts are not processed line-by-line by the sven REPL.
+    local single_line = text:gsub('\n', ' ')
+    append('**You:** ' .. single_line .. '\n\n')
     if job_id and job_id > 0 then
-      pcall(vim.fn.chansend, job_id, text .. '\n')
+      pcall(vim.fn.chansend, job_id, single_line .. '\n')
     end
   end
 
