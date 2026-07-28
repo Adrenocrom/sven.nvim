@@ -41,6 +41,7 @@ local function open_terminal(cmd, prepared_prompt, make_win, config)
   -- keystroke forwarding between the terminal buffer and the job.
   vim.api.nvim_buf_call(buf, function()
     vim.bo[buf].filetype = (config and config.terminal_filetype) or M.default_filetype
+    vim.bo[buf].syntax = (config and config.terminal_filetype) or M.default_filetype
     vim.fn.termopen(cmd, {
       on_exit = function(_, _, _)
         safe_close_win(win)
