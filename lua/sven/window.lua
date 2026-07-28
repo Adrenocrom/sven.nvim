@@ -1,3 +1,5 @@
+local M = {}
+
 -- Close a window if it is still valid
 local function safe_close_win(win)
   if win and vim.api.nvim_win_is_valid(win) then
