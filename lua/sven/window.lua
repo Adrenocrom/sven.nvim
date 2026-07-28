@@ -23,64 +23,30 @@ local function safe_chansend(id, data)
 end
 
 -- Open a terminal running `cmd` in a window created by `make_win`.
--- If `prepared_prompt` is provided, it is sent to the job's stdin after the
--- first stdout is received, so sven has a chance to print its prompt first.
+-- If `prepared_prompt` is provided, it is sent to the job's stdin after a
+-- short delay so the process has time to initialize.
 local function open_terminal(cmd, prepared_prompt, make_win)
-  local buf = vim.api.nvim_create_buf(false, false)
+  local buf = vim.api.nvim_create_buf(false, true)
   local win = make_win(buf)
 
-  local job_id
-  local prompt_sent = false
+  -- Open the terminal job directly in the buffer. Neovim handles all
+  -- keystroke forwarding between the terminal buffer and the job.
+  vim.api.nvim_buf_call(buf, function()
+    vim.fn.termopen(cmd, {
+      on_exit = function(_, _, _)
+        safe_close_win(win)
+        safe_close_buf(buf)
+      end,
+    })
+  end)
 
-  -- Open a terminal instance in the buffer. User keystrokes are forwarded to
-  -- the job, and the job's stdout is forwarded to the terminal display.
-  local term_id = vim.api.nvim_open_term(buf, {
-    on_input = function(_, data, _)
-      if job_id and job_id > 0 and vim.api.nvim_buf_is_valid(buf) then
-        safe_chansend(job_id, data)
-      end
-    end,
-  })
+  local job_id = vim.b[buf].terminal_job_id
 
-  job_id = vim.fn.jobstart(cmd, {
-    pty = true,
-    on_stdout = function(_, data, _)
-      if not data or not vim.api.nvim_buf_is_valid(buf) then
-        return
-      end
-
-      -- Forward sven's output to the terminal buffer.
-      safe_chansend(term_id, data)
-
-      -- Send the prepared prompt once sven has produced its first output.
-      if not prompt_sent and prepared_prompt and prepared_prompt ~= '' then
-        for _, line in ipairs(data) do
-          if line ~= '' then
-            prompt_sent = true
-            vim.defer_fn(function()
-              if job_id and job_id > 0 then
-                safe_chansend(job_id, prepared_prompt .. '\n')
-              end
-            end, 50)
-            break
-          end
-        end
-      end
-    end,
-    on_exit = function(_, _, _)
-      safe_close_win(win)
-      safe_close_buf(buf)
-    end,
-  })
-
-  -- Fallback: if sven produces no stdout, send the prompt after a short delay.
-  if prepared_prompt and prepared_prompt ~= '' then
+  -- Send the prepared prompt once the terminal is ready.
+  if prepared_prompt and prepared_prompt ~= '' and job_id and job_id > 0 then
     vim.defer_fn(function()
-      if not prompt_sent and job_id and job_id > 0 then
-        prompt_sent = true
-        safe_chansend(job_id, prepared_prompt .. '\n')
-      end
-    end, 1000)
+      safe_chansend(job_id, prepared_prompt .. '\n')
+    end, 100)
   end
 
   -- Focus the window and start insert mode so keystrokes go to sven.

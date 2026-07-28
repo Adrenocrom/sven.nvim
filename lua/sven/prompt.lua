@@ -15,18 +15,6 @@ local function get_buffer_content(bufnr)
   return table.concat(lines, '\n')
 end
 
--- Escape line breaks so the prepared prompt stays on a single line when sent
--- to a terminal process. This avoids the terminal interpreting newlines as
--- multiple separate inputs.
-local function escape_line_endings(s)
-  return s:gsub('\n', '\\n'):gsub('\r', '\\r')
-end
-
--- Escape percent signs so string.gsub treats the replacement as plain text.
-local function escape_repl(s)
-  return s:gsub('%%', '%%%%')
-end
-
 -- Plain-text replacement: replace all occurrences of `pattern` in `str` with `repl`.
 -- Uses a replacement function so gsub never interprets percent signs in `repl`
 -- as capture references.
@@ -49,19 +37,18 @@ function M.build(bufnr, user_prompt, template)
     filepath = '[unnamed]'
   end
   local content = get_buffer_content(bufnr)
+
   local result = template
   result = replace_all(result, '{{filetype}}', filetype)
   result = replace_all(result, '{{filepath}}', filepath)
   result = replace_all(result, '{{content}}', content)
   result = replace_all(result, '{{prompt}}', user_prompt)
 
-  -- Sanitize the final prompt so line breaks are escaped before sending it
-  -- to a terminal process. This keeps the whole prompt as one input.
-  return escape_line_endings(result)
+  return result
 end
 
 function M.default_template()
-  return "Regarding the following text, {{prompt}}:\n{{content}}"
+  return "Regarding the following text, {{prompt}}:\n\nFiletype: {{filetype}}\nFilepath: {{filepath}}\n\nContent:\n{{content}}"
 end
 
 -- Print the prepared prompt for the current buffer to :messages.
