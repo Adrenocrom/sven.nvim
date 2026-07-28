@@ -99,9 +99,14 @@ local function create_appender(buf)
     last_user_content = content
   end
 
+  local function clear_last_user_content()
+    last_user_content = nil
+  end
+
   return {
     append = append,
     set_last_user_content = set_last_user_content,
+    clear_last_user_content = clear_last_user_content,
   }
 end
 
@@ -138,9 +143,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     -- Send the whole message as one input line so multi-line prepared
     -- prompts are not processed line-by-line by the sven REPL.
     local single_line = text:gsub('\n', ' ')
-    appender.set_last_user_content(single_line)
-    append('User: ' .. single_line)
-    append('')
     if job_id and job_id > 0 then
       pcall(vim.fn.chansend, job_id, single_line .. '\n')
     end
@@ -183,7 +185,20 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 
   -- Pressing 'i' in normal mode opens an input prompt to talk to sven.
   vim.keymap.set('n', 'i', function()
-    vim.ui.input({ prompt = 'sven> ' }, send_input)
+    vim.ui.input({ prompt = 'sven> ' }, function(text)
+      if not text or text == '' then
+        return
+      end
+      -- For interactive input we show a local "User:" line and remember
+      -- the content so the REPL's stdin echo can be filtered out.
+      local single_line = text:gsub('\n', ' ')
+      appender.set_last_user_content(single_line)
+      append('User: ' .. single_line)
+      append('')
+      if job_id and job_id > 0 then
+        pcall(vim.fn.chansend, job_id, single_line .. '\n')
+      end
+    end)
   end, { buffer = buf, noremap = true, silent = true })
 
   -- Pressing 'q' in normal mode closes the window and stops the job.
