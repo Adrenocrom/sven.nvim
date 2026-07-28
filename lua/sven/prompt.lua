@@ -46,6 +46,8 @@ function M.build(bufnr, user_prompt, template)
   end
   local content = get_buffer_content(bufnr)
 
+  print(filetype)
+  print("-----")
   local result = template
   result = replace_all(result, '{{filetype}}', filetype)
   print(filetype)
