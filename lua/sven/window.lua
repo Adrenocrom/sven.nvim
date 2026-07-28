@@ -22,16 +22,28 @@ local function strip_ansi(s)
   return s:gsub('\27%[[%d;]*%a', ''):gsub('\r', '')
 end
 
--- Create an appender function for `buf` that handles partial lines and keeps
+-- Create an appender function for `buf` that handles partial lines,
+-- strips ANSI/CR characters, collapses consecutive blank lines, and keeps
 -- the cursor at the end of the buffer.
 local function create_appender(buf)
   local pending = ''
+  local last_was_blank = true
 
   local function flush(lines)
-    if #lines == 0 then
+    local filtered = {}
+    for _, line in ipairs(lines) do
+      local is_blank = line:match('^%s*$') ~= nil
+      if not (is_blank and last_was_blank) then
+        table.insert(filtered, line)
+        last_was_blank = is_blank
+      end
+    end
+
+    if #filtered == 0 then
       return
     end
-    vim.api.nvim_buf_set_lines(buf, -1, -1, false, lines)
+
+    vim.api.nvim_buf_set_lines(buf, -1, -1, false, filtered)
 
     local line_count = vim.api.nvim_buf_line_count(buf)
     for _, win in ipairs(vim.fn.win_findbuf(buf)) do
@@ -85,7 +97,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     -- Send the whole message as one input line so multi-line prepared
     -- prompts are not processed line-by-line by the sven REPL.
     local single_line = text:gsub('\n', ' ')
-    append('**You:** ' .. single_line .. '\n\n')
     if job_id and job_id > 0 then
       pcall(vim.fn.chansend, job_id, single_line .. '\n')
     end
@@ -102,7 +113,12 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
       for i = 1, #data - 1 do
         append(data[i] .. '\n')
       end
-      append(data[#data] or '')
+      -- Ignore the trailing empty chunk that jobstart appends after each
+      -- stdout flush; it creates spurious blank lines in the output buffer.
+      local last = data[#data]
+      if last and last ~= '' then
+        append(last)
+      end
     end,
     on_stderr = function(_, _, _)
       -- stderr is intentionally hidden
