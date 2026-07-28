@@ -4,6 +4,7 @@ local window = require('sven.window')
 local prompt = require('sven.prompt')
 
 -- Default configuration
+local M = {}
 M.config = {
   -- 'vsplit' | 'float'
   default_window = 'vsplit',
@@ -18,7 +19,7 @@ M.config = {
     border = 'rounded',
   },
   -- Template for prepared prompts.
-  -- Available placeholders: {{filetype}}, {{content}}, {{prompt}}
+  -- Available placeholders: {{filetype}}, {{filepath}}, {{content}}, {{prompt}}
   prompt_template = prompt.default_template(),
 }
 
