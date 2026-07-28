@@ -1,0 +1,45 @@
+*sven.txt*        Neovim plugin for the sven CLI
+
+CONTENTS                                            *sven-contents*
+    Introduction..................................................|sven-intro|
+    Commands......................................................|sven-commands|
+    Configuration.................................................|sven-config|
+    Mappings......................................................|sven-mappings|
+
+INTRODUCTION                                      *sven-intro*
+
+sven.nvim opens the `sven` command-line tool inside Neovim in either a
+vertical split or a floating terminal window. No temporary files are used;
+sven runs directly in a `:terminal` buffer.
+
+COMMANDS                                        *sven-commands*
+
+:Sven [vsplit|float]                            *:Sven*
+    Open sven. With no argument, uses the configured `default_window`.
+
+:SvenVsplit                                     *:SvenVsplit*
+    Open sven in a vertical split terminal.
+
+:SvenFloat                                      *:SvenFloat*
+    Open sven in a centered floating terminal.
+
+CONFIGURATION                                   *sven-config*
+
+    require('sven').setup({
+      default_window = 'vsplit',   -- 'vsplit' or 'float'
+      keymap = '<leader>sv',       -- set to false to disable
+      float = {
+        width = 0.8,
+        height = 0.8,
+        border = 'rounded',      -- 'single', 'double', 'shadow', etc.
+      },
+    })
+
+MAPPINGS                                        *sven-mappings*
+
+<leader>sv        Open sven using the default window (default mapping).
+
+Inside the terminal window:
+  - Terminal mode sends all keys to sven.
+  - Press <Esc> to enter normal mode, then `q` to close the window.
+  - In a floating window, <Esc><Esc> in terminal mode also closes it.
