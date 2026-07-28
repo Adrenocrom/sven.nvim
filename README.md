@@ -119,6 +119,11 @@ require('sven').setup({
 })
 ```
 
+Note: terminal buffers render raw process output, so Markdown highlighting
+only applies to the buffer text (for example, after pressing `<Esc>` to enter
+normal mode). For clean Markdown rendering of `sven` output, capture it to a
+normal buffer instead of a terminal.
+
 ## Why no temp file?
 
 `sven` is an interactive tool. This plugin runs it directly in a Neovim `:terminal` buffer via `termopen('sven', ...)`. There is no need to capture output to a temporary file because the terminal itself is the interface.

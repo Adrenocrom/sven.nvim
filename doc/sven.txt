@@ -49,6 +49,9 @@ CONFIGURATION                                   *sven-config*
         border = 'rounded',      -- 'single', 'double', 'shadow', etc.
       },
       prompt_template = "Filetype: {{filetype}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}",
+      -- Filetype assigned to the terminal buffer. Use 'markdown' for
+      -- Markdown highlighting/conceal, or any other filetype you prefer.
+      terminal_filetype = 'sven',
     })
 
 MAPPINGS                                        *sven-mappings*
@@ -60,3 +63,17 @@ Inside the terminal window:
   - Terminal mode sends all keys to sven.
   - Press <Esc> to enter normal mode, then `q` to close the window.
   - In a floating window, <Esc><Esc> in terminal mode also closes it.
+
+TERMINAL FILETYPE                               *sven-terminal-filetype*
+
+The terminal buffer is assigned a filetype (default: 'sven'). Set it to
+'markdown' to get Markdown syntax highlighting and conceal:
+
+    require('sven').setup({
+      terminal_filetype = 'markdown',
+    })
+
+Note: terminal buffers render raw process output, so Markdown highlighting
+only applies to the buffer text (for example, after pressing <Esc> to enter
+normal mode). For clean Markdown rendering, capture sven output to a normal
+buffer instead of a terminal.
