@@ -32,7 +32,7 @@ local function create_appender(buf)
   local last_user_line = nil
 
   local function is_blank_user_line(line)
-    return line:match('^%s*$') ~= nil or line:match('^%s*User:%s*$') ~= nil
+    return line:match('^%s*User:%s*$') ~= nil
   end
 
   local function trim_trailing_blank(buf_handle)
