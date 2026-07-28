@@ -29,20 +29,36 @@ end
 local function create_appender(buf)
   local pending = ''
   local prev_blank = true
-  local last_user_line = nil
 
   local function is_blank_line(line)
     return line:match('^%s*$') ~= nil
   end
 
-  local function flush(lines)
+  local function normalize(s)
+    return s:gsub('%s+', ' '):gsub('^%s*(.-)%s*$', '%1')
+  end
+
+  local append
+  append = function(text)
+    if not vim.api.nvim_buf_is_valid(buf) then
+      return
+    end
+
+    text = strip_ansi(pending .. text)
+    local lines = vim.split(text, '\n', { plain = true })
+    pending = table.remove(lines) or ''
+
     local filtered = {}
     for _, line in ipairs(lines) do
-      local user_content = line:match('^%s*User:%s*(.*)$')
+      local user_content = line:match('^%s*User:%s*(.-)%s*$')
 
-      -- Drop exact duplicate User: lines caused by stdin echo.
-      if user_content and last_user_line == line then
-        goto continue
+      -- Drop User: lines whose content matches the last thing we sent,
+      -- even if whitespace differs. This prevents stdin echo from
+      -- duplicating the prompt in the output buffer.
+      if user_content and append.last_user_content then
+        if normalize(user_content) == normalize(append.last_user_content) then
+          goto continue
+        end
       end
 
       local blank = is_blank_line(line)
@@ -53,9 +69,6 @@ local function create_appender(buf)
 
       table.insert(filtered, line)
       prev_blank = blank
-      if user_content then
-        last_user_line = line
-      end
 
       ::continue::
     end
@@ -74,16 +87,8 @@ local function create_appender(buf)
     end
   end
 
-  return function(text)
-    if not vim.api.nvim_buf_is_valid(buf) then
-      return
-    end
-
-    text = strip_ansi(pending .. text)
-    local lines = vim.split(text, '\n', { plain = true })
-    pending = table.remove(lines) or ''
-    flush(lines)
-  end
+  append.last_user_content = nil
+  return append
 end
 
 -- Open a markdown buffer running `cmd` as a background job.
@@ -118,6 +123,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     -- Send the whole message as one input line so multi-line prepared
     -- prompts are not processed line-by-line by the sven REPL.
     local single_line = text:gsub('\n', ' ')
+    append.last_user_content = single_line
     append('User: ' .. single_line)
     append('')
     if job_id and job_id > 0 then
