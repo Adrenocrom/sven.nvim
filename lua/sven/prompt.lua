@@ -48,8 +48,14 @@ function M.build(bufnr, user_prompt, template)
 
   local result = template
   result = replace_all(result, '{{filetype}}', filetype)
+  print(filetype)
+  print(result)
   result = replace_all(result, '{{filepath}}', filepath)
+  print(filepath)
+  print(result)
+  print(result)
   result = replace_all(result, '{{content}}', content)
+  print(result)
   result = replace_all(result, '{{prompt}}', user_prompt)
   print(result)
 
