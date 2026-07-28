@@ -1,5 +1,3 @@
-local M = {}
-
 -- Close a window if it is still valid
 local function safe_close_win(win)
   if win and vim.api.nvim_win_is_valid(win) then
@@ -14,51 +12,68 @@ local function safe_close_buf(buf)
   end
 end
 
--- Build the shell command used to launch sven.
--- When a prepared prompt is provided, wrap sven in `script` so it sees stdin as
--- a TTY. This avoids the "Input is not a terminal" warning and lets sven read
--- the full multi-line prompt.
-local function build_command(prepared_prompt)
-  if not prepared_prompt or prepared_prompt == '' then
-    return 'sven'
-  end
-
-  -- `script -q -c '<cmd>' /dev/null` runs <cmd> attached to a pseudo-terminal.
-  -- We pass the prompt through stdin of `script`, which forwards it to sven.
-  local cmd = "script -q -c 'sven' /dev/null"
-  if vim.fn.executable('script') == 0 then
-    -- Fall back if `script` is unavailable.
-    cmd = 'sven'
-  end
-
-  return cmd
-end
-
-
-
--- Open sven in a vertical split terminal.
--- If prepared_prompt is given, it is sent to sven's stdin.
-function M.open_vsplit(prepared_prompt)
-  vim.cmd('vsplit')
-  local win = vim.api.nvim_get_current_win()
+-- Open a terminal running `cmd` in a window created by `make_win`.
+-- If `prepared_prompt` is provided, it is sent to the job's stdin after the
+-- first stdout is received, so sven has a chance to print its prompt first.
+local function open_terminal(cmd, prepared_prompt, make_win)
   local buf = vim.api.nvim_create_buf(false, false)
-  vim.api.nvim_win_set_buf(win, buf)
+  local win = make_win(buf)
 
-  local job_id = vim.fn.termopen(build_command(prepared_prompt), {
+  local job_id
+  local prompt_sent = false
+
+  -- Open a terminal instance in the buffer. User keystrokes are forwarded to
+  -- the job, and the job's stdout is forwarded to the terminal display.
+  local term_id = vim.api.nvim_open_term(buf, {
+    on_input = function(_, data, _)
+      if job_id and job_id > 0 then
+        vim.fn.chansend(job_id, data)
+      end
+    end,
+  })
+
+  job_id = vim.fn.jobstart(cmd, {
+    pty = true,
+    on_stdout = function(_, data, _)
+      if not data then
+        return
+      end
+
+      -- Forward sven's output to the terminal buffer.
+      vim.fn.chansend(term_id, data)
+
+      -- Send the prepared prompt once sven has produced its first output.
+      if not prompt_sent and prepared_prompt and prepared_prompt ~= '' then
+        for _, line in ipairs(data) do
+          if line ~= '' then
+            prompt_sent = true
+            vim.defer_fn(function()
+              if job_id and job_id > 0 then
+                vim.fn.chansend(job_id, prepared_prompt .. '\n')
+              end
+            end, 50)
+            break
+          end
+        end
+      end
+    end,
     on_exit = function(_, _, _)
       safe_close_win(win)
       safe_close_buf(buf)
     end,
   })
 
-  if prepared_prompt and prepared_prompt ~= '' and job_id and job_id > 0 then
+  -- Fallback: if sven produces no stdout, send the prompt after a short delay.
+  if prepared_prompt and prepared_prompt ~= '' then
     vim.defer_fn(function()
-      vim.fn.chansend(job_id, prepared_prompt .. '\n')
-      vim.fn.chanclose(job_id, 'stdin')
-    end, 100)
+      if not prompt_sent and job_id and job_id > 0 then
+        prompt_sent = true
+        vim.fn.chansend(job_id, prepared_prompt .. '\n')
+      end
+    end, 1000)
   end
 
-  -- Start in insert mode so keystrokes go directly to sven
+  -- Focus the window and start insert mode so keystrokes go to sven.
   vim.defer_fn(function()
     if vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_set_current_win(win)
@@ -71,6 +86,19 @@ function M.open_vsplit(prepared_prompt)
     safe_close_win(win)
     safe_close_buf(buf)
   end, { buffer = buf, noremap = true, silent = true })
+
+  return job_id
+end
+
+-- Open sven in a vertical split terminal.
+-- If prepared_prompt is given, it is sent to sven's stdin.
+function M.open_vsplit(prepared_prompt)
+  open_terminal('sven', prepared_prompt, function(buf)
+    vim.cmd('vsplit')
+    local win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(win, buf)
+    return win
+  end)
 end
 
 -- Open sven in a centered floating terminal.
@@ -82,48 +110,25 @@ function M.open_float(opts, prepared_prompt)
   local row = math.floor((vim.o.lines - height) / 2)
   local col = math.floor((vim.o.columns - width) / 2)
 
-  local buf = vim.api.nvim_create_buf(false, false)
-  local win = vim.api.nvim_open_win(buf, true, {
-    relative = 'editor',
-    width = width,
-    height = height,
-    row = row,
-    col = col,
-    style = 'minimal',
-    border = opts.border or 'rounded',
-  })
+  open_terminal('sven', prepared_prompt, function(buf)
+    local win = vim.api.nvim_open_win(buf, true, {
+      relative = 'editor',
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      style = 'minimal',
+      border = opts.border or 'rounded',
+    })
 
-  local job_id = vim.fn.termopen(build_command(prepared_prompt), {
-    on_exit = function(_, _, _)
+    -- Close floating window with <Esc><Esc> in terminal mode
+    vim.keymap.set('t', '<Esc><Esc>', function()
       safe_close_win(win)
       safe_close_buf(buf)
-    end,
-  })
+    end, { buffer = buf, noremap = true, silent = true })
 
-  if prepared_prompt and prepared_prompt ~= '' and job_id and job_id > 0 then
-    vim.defer_fn(function()
-      vim.fn.chansend(job_id, prepared_prompt .. '\n')
-      vim.fn.chanclose(job_id, 'stdin')
-    end, 100)
-  end
-
-  vim.defer_fn(function()
-    if vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_set_current_win(win)
-      vim.cmd('startinsert')
-    end
-  end, 50)
-
-  -- Close floating window with 'q' in normal mode or <Esc> twice
-  vim.keymap.set('n', 'q', function()
-    safe_close_win(win)
-    safe_close_buf(buf)
-  end, { buffer = buf, noremap = true, silent = true })
-
-  vim.keymap.set('t', '<Esc><Esc>', function()
-    safe_close_win(win)
-    safe_close_buf(buf)
-  end, { buffer = buf, noremap = true, silent = true })
+    return win
+  end)
 end
 
 return M

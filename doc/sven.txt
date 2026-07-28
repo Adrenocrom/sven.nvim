@@ -23,21 +23,38 @@ COMMANDS                                        *sven-commands*
 :SvenFloat                                      *:SvenFloat*
     Open sven in a centered floating terminal.
 
+:SvenAsk [vsplit|float]                         *:SvenAsk*
+    Ask sven about the current buffer. Builds a prepared prompt from the
+    buffer content and filetype, then opens sven.
+
+:SvenAskVsplit                                  *:SvenAskVsplit*
+    Same as `:SvenAsk` but always uses a vertical split.
+
+:SvenAskFloat                                   *:SvenAskFloat*
+    Same as `:SvenAsk` but always uses a floating window.
+
+:SvenPreviewPrompt                              *:SvenPreviewPrompt*
+    Preview the prepared prompt that would be sent to sven without opening
+    the terminal. Useful for debugging.
+
 CONFIGURATION                                   *sven-config*
 
     require('sven').setup({
       default_window = 'vsplit',   -- 'vsplit' or 'float'
       keymap = '<leader>sv',       -- set to false to disable
+      keymap_ask = '<leader>sa', -- set to false to disable
       float = {
         width = 0.8,
         height = 0.8,
         border = 'rounded',      -- 'single', 'double', 'shadow', etc.
       },
+      prompt_template = "Filetype: {{filetype}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}",
     })
 
 MAPPINGS                                        *sven-mappings*
 
 <leader>sv        Open sven using the default window (default mapping).
+<leader>sa        Ask sven about the current buffer (default mapping).
 
 Inside the terminal window:
   - Terminal mode sends all keys to sven.
