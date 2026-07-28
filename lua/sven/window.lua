@@ -45,14 +45,14 @@ local function create_appender(buf)
         goto continue
       end
 
-      local blank = is_blank_line(line)
-      if blank and prev_blank then
-        -- collapse consecutive blank lines
-        goto continue
-      end
+      --local blank = is_blank_line(line)
+      --if blank and prev_blank then
+      --  -- collapse consecutive blank lines
+      --  goto continue
+      --end
 
       table.insert(filtered, line)
-      prev_blank = blank
+      --prev_blank = blank
       if user_content then
         last_user_line = line
       end
