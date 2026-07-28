@@ -33,6 +33,10 @@ local function create_appender(buf)
     local filtered = {}
     for _, line in ipairs(lines) do
       local is_blank = line:match('^%s*$') ~= nil
+      -- Drop blank lines that immediately follow or precede an empty "User:" line.
+      if line:match('^%s*User:%s*$') then
+        is_blank = true
+      end
       if not (is_blank and last_was_blank) then
         table.insert(filtered, line)
         last_was_blank = is_blank
