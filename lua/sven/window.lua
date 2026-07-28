@@ -1,5 +1,8 @@
 local M = {}
 
+-- Default filetype for the terminal buffer. Can be overridden via config.
+M.default_filetype = 'sven'
+
 -- Close a window if it is still valid
 local function safe_close_win(win)
   if win and vim.api.nvim_win_is_valid(win) then
@@ -30,13 +33,14 @@ end
 -- Open a terminal running `cmd` in a window created by `make_win`.
 -- If `prepared_prompt` is provided, it is sent to the job's stdin after a
 -- short delay so the process has time to initialize.
-local function open_terminal(cmd, prepared_prompt, make_win)
+local function open_terminal(cmd, prepared_prompt, make_win, config)
   local buf = vim.api.nvim_create_buf(false, true)
   local win = make_win(buf)
 
   -- Open the terminal job directly in the buffer. Neovim handles all
   -- keystroke forwarding between the terminal buffer and the job.
   vim.api.nvim_buf_call(buf, function()
+    vim.bo[buf].filetype = (config and config.terminal_filetype) or M.default_filetype
     vim.fn.termopen(cmd, {
       on_exit = function(_, _, _)
         safe_close_win(win)
@@ -74,18 +78,18 @@ end
 
 -- Open sven in a vertical split terminal.
 -- If prepared_prompt is given, it is sent to sven's stdin.
-function M.open_vsplit(prepared_prompt)
+function M.open_vsplit(prepared_prompt, config)
   open_terminal('sven', prepared_prompt, function(buf)
     vim.cmd('vsplit')
     local win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     return win
-  end)
+  end, config)
 end
 
 -- Open sven in a centered floating terminal.
 -- If prepared_prompt is given, it is sent to sven's stdin.
-function M.open_float(opts, prepared_prompt)
+function M.open_float(opts, prepared_prompt, config)
   opts = opts or {}
   local width = math.floor(vim.o.columns * (opts.width or 0.8))
   local height = math.floor(vim.o.lines * (opts.height or 0.8))
@@ -110,7 +114,7 @@ function M.open_float(opts, prepared_prompt)
     end, { buffer = buf, noremap = true, silent = true })
 
     return win
-  end)
+  end, config)
 end
 
 return M

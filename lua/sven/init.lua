@@ -21,6 +21,9 @@ M.config = {
   -- Template for prepared prompts.
   -- Available placeholders: {{filetype}}, {{filepath}}, {{content}}, {{prompt}}
   prompt_template = prompt.default_template(),
+  -- Filetype assigned to the terminal buffer. Set to 'markdown' to get
+  -- Markdown highlighting/conceal, or any other filetype you prefer.
+  terminal_filetype = require('sven.window').default_filetype,
 }
 
 function M.setup(user_config)
@@ -87,9 +90,9 @@ end
 function M.open(mode)
   mode = mode or M.config.default_window
   if mode == 'float' then
-    window.open_float(M.config.float)
+    window.open_float(M.config.float, nil, M.config)
   else
-    window.open_vsplit()
+    window.open_vsplit(nil, M.config)
   end
 end
 
@@ -116,9 +119,9 @@ function M.open_with_prompt(mode, bufnr, user_prompt)
     local prepared = prompt.build(bufnr, user_prompt, M.config.prompt_template)
 
     if mode == 'float' then
-      window.open_float(M.config.float, prepared)
+      window.open_float(M.config.float, prepared, M.config)
     else
-      window.open_vsplit(prepared)
+      window.open_vsplit(prepared, M.config)
     end
   end)
 end

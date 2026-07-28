@@ -91,6 +91,10 @@ require('sven').setup({
   -- Template used to build the prepared prompt for :SvenAsk.
   -- Available placeholders: {{filetype}}, {{content}}, {{prompt}}
   prompt_template = "Filetype: {{filetype}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}",
+
+  -- Filetype assigned to the terminal buffer. Use 'markdown' for Markdown
+  -- highlighting/conceal, or any other filetype you prefer.
+  terminal_filetype = 'sven',
 })
 ```
 
@@ -102,6 +106,18 @@ Inside the terminal window:
 - **`<Esc>`** — enter normal mode
 - **`q`** in normal mode — close the window
 - **`<Esc><Esc>`** in a floating window — close the floating window
+
+## Terminal filetype
+
+The terminal buffer is assigned a filetype (default: `sven`). You can set it
+to `markdown` in your config to get Markdown syntax highlighting and
+conceal in the terminal window:
+
+```lua
+require('sven').setup({
+  terminal_filetype = 'markdown',
+})
+```
 
 ## Why no temp file?
 
