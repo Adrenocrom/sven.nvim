@@ -22,13 +22,17 @@ local function strip_ansi(s)
   return s:gsub('\27%[[%d;]*%a', ''):gsub('\r', '')
 end
 
--- Create an appender function for `buf` that handles partial lines,
--- strips ANSI/CR characters, collapses consecutive blank lines, drops
--- duplicate "User:" lines caused by stdin echo, and keeps the cursor at
--- the end of the buffer.
+-- Create an appender for `buf` that handles partial lines, strips ANSI/CR
+-- characters, collapses consecutive blank lines, drops duplicate "User:"
+-- lines caused by stdin echo, and keeps the cursor at the end of the buffer.
+--
+-- Returns a table with two methods:
+--   append(text)                -- append text to the buffer
+--   set_last_user_content(text) -- remember the last user input for echo filtering
 local function create_appender(buf)
   local pending = ''
   local prev_blank = true
+  local last_user_content = nil
 
   local function is_blank_line(line)
     return line:match('^%s*$') ~= nil
@@ -37,8 +41,6 @@ local function create_appender(buf)
   local function normalize(s)
     return s:gsub('%s+', ' '):gsub('^%s*(.-)%s*$', '%1')
   end
-
-  local last_user_content = nil
 
   local function append(text)
     if not vim.api.nvim_buf_is_valid(buf) then
@@ -88,14 +90,14 @@ local function create_appender(buf)
     end
   end
 
-  -- Expose a setter so send_input can tell the appender what the user
-  -- last typed, without relying on function fields (which are not
-  -- accessible inside the function's own definition in some Lua versions).
-  append.set_last_user_content = function(content)
+  local function set_last_user_content(content)
     last_user_content = content
   end
 
-  return append
+  return {
+    append = append,
+    set_last_user_content = set_last_user_content,
+  }
 end
 
 -- Open a markdown buffer running `cmd` as a background job.
@@ -112,7 +114,8 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
   vim.bo[buf].syntax = filetype
 
   local win = make_win(buf)
-  local append = create_appender(buf)
+  local appender = create_appender(buf)
+  local append = appender.append
 
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
     '# Sven',
@@ -130,7 +133,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     -- Send the whole message as one input line so multi-line prepared
     -- prompts are not processed line-by-line by the sven REPL.
     local single_line = text:gsub('\n', ' ')
-    append.set_last_user_content(single_line)
+    appender.set_last_user_content(single_line)
     append('User: ' .. single_line)
     append('')
     if job_id and job_id > 0 then
