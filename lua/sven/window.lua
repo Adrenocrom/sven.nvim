@@ -61,7 +61,7 @@ local function create_appender(buf)
     end
   end
 
-  local function flush(lines, is_final)
+  local function flush(lines)
     local filtered = {}
     for _, line in ipairs(lines) do
       local user_content = line:match('^%s*User:%s*(.*)$')
@@ -88,10 +88,7 @@ local function create_appender(buf)
     end
 
     vim.api.nvim_buf_set_lines(buf, -1, -1, false, filtered)
-
-    if is_final then
-      trim_trailing_user(buf)
-    end
+    trim_trailing_user(buf)
 
     local line_count = vim.api.nvim_buf_line_count(buf)
     for _, win in ipairs(vim.fn.win_findbuf(buf)) do
@@ -101,7 +98,7 @@ local function create_appender(buf)
     end
   end
 
-  return function(text, is_final)
+  return function(text)
     if not vim.api.nvim_buf_is_valid(buf) then
       return
     end
@@ -109,7 +106,7 @@ local function create_appender(buf)
     text = strip_ansi(pending .. text)
     local lines = vim.split(text, '\n', { plain = true })
     pending = table.remove(lines) or ''
-    flush(lines, is_final)
+    flush(lines)
   end
 end
 
@@ -170,6 +167,10 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     end,
     on_stderr = function(_, _, _)
       -- stderr is intentionally hidden
+    end,
+    on_exit = function(_, exit_code, _)
+      append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
+      job_id = nil
     end,
     on_exit = function(_, exit_code, _)
       append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
