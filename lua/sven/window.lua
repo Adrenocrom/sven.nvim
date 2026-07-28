@@ -23,24 +23,64 @@ local function strip_ansi(s)
 end
 
 -- Create an appender function for `buf` that handles partial lines,
--- strips ANSI/CR characters, collapses consecutive blank lines, and keeps
--- the cursor at the end of the buffer.
+-- strips ANSI/CR characters, collapses consecutive blank lines, drops
+-- duplicate "User:" lines caused by stdin echo, and keeps the cursor at
+-- the end of the buffer.
 local function create_appender(buf)
   local pending = ''
   local last_was_blank = true
+  local last_user_line = nil
 
-  local function flush(lines)
+  local function is_blank_line(line)
+    return line:match('^%s*$') ~= nil or line:match('^%s*User:%s*$') ~= nil
+  end
+
+  local function trim_trailing_blank(buf_handle)
+    local count = vim.api.nvim_buf_line_count(buf_handle)
+    while count > 1 do
+      local last = vim.api.nvim_buf_get_lines(buf_handle, count - 2, count - 1, false)[1]
+      if is_blank_line(last) then
+        vim.api.nvim_buf_set_lines(buf_handle, count - 2, count - 1, false, {})
+        count = count - 1
+      else
+        break
+      end
+    end
+  end
+
+  -- Remove a trailing empty "User:" line that sven prints before the
+  -- next prompt. This is the line before the final cursor/blank line.
+  local function trim_trailing_user(buf_handle)
+    trim_trailing_blank(buf_handle)
+    local count = vim.api.nvim_buf_line_count(buf_handle)
+    if count > 1 then
+      local last = vim.api.nvim_buf_get_lines(buf_handle, count - 2, count - 1, false)[1]
+      if last and last:match('^%s*User:%s*$') then
+        vim.api.nvim_buf_set_lines(buf_handle, count - 2, count - 1, false, {})
+      end
+    end
+  end
+
+  local function flush(lines, is_final)
     local filtered = {}
     for _, line in ipairs(lines) do
-      local is_blank = line:match('^%s*$') ~= nil
-      -- Drop blank lines that immediately follow or precede an empty "User:" line.
-      if line:match('^%s*User:%s*$') then
-        is_blank = true
+      local user_content = line:match('^%s*User:%s*(.*)$')
+
+      -- Drop exact duplicate User: lines caused by stdin echo.
+      if user_content and last_user_line == line then
+        goto continue
       end
+
+      local is_blank = is_blank_line(line)
       if not (is_blank and last_was_blank) then
         table.insert(filtered, line)
         last_was_blank = is_blank
+        if user_content then
+          last_user_line = line
+        end
       end
+
+      ::continue::
     end
 
     if #filtered == 0 then
@@ -49,15 +89,19 @@ local function create_appender(buf)
 
     vim.api.nvim_buf_set_lines(buf, -1, -1, false, filtered)
 
+    if is_final then
+      trim_trailing_user(buf)
+    end
+
     local line_count = vim.api.nvim_buf_line_count(buf)
     for _, win in ipairs(vim.fn.win_findbuf(buf)) do
       if vim.api.nvim_win_is_valid(win) then
-        vim.api.nvim_win_set_cursor(win, { line_count, 0 })
+        vim.api.nvim_win_set_cursor(win, { math.max(1, line_count), 0 })
       end
     end
   end
 
-  return function(text)
+  return function(text, is_final)
     if not vim.api.nvim_buf_is_valid(buf) then
       return
     end
@@ -65,7 +109,7 @@ local function create_appender(buf)
     text = strip_ansi(pending .. text)
     local lines = vim.split(text, '\n', { plain = true })
     pending = table.remove(lines) or ''
-    flush(lines)
+    flush(lines, is_final)
   end
 end
 
