@@ -1,12 +1,32 @@
 local M = {}
 
--- Read the entire content of a buffer
+-- Read the entire content of a buffer.
+-- Returns a diagnostic string if the buffer is invalid or unreadable.
 local function get_buffer_content(bufnr)
-  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return '[invalid buffer ' .. tostring(bufnr) .. ']'
+  end
+
+  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+  if not ok or type(lines) ~= 'table' then
+    return '[failed to read buffer ' .. tostring(bufnr) .. ']'
+  end
+
   return table.concat(lines, '\n')
 end
 
--- Build a prepared prompt for sven
+-- Escape percent signs so string.gsub treats the replacement as plain text.
+local function escape_repl(s)
+  return s:gsub('%%', '%%%%')
+end
+
+-- Plain-text replacement: replace all occurrences of `pattern` in `str` with `repl`.
+local function replace_all(str, pattern, repl)
+  return str:gsub(pattern, escape_repl(repl))
+end
+
+-- Build a prepared prompt for sven.
+-- The returned string is plain text; no shell escaping is done here.
 function M.build(bufnr, user_prompt, template)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   user_prompt = user_prompt or ''
@@ -15,18 +35,33 @@ function M.build(bufnr, user_prompt, template)
   local filetype = vim.bo[bufnr].filetype or 'unknown'
   local content = get_buffer_content(bufnr)
 
-  -- Escape single quotes in content so the shell command stays valid
-  local safe_content = content:gsub("'", "'\\''")
-  local safe_prompt = user_prompt:gsub("'", "'\\''")
+  local result = template
+  result = replace_all(result, '{{filetype}}', filetype)
+  result = replace_all(result, '{{content}}', content)
+  result = replace_all(result, '{{prompt}}', user_prompt)
 
-  return template
-    :gsub('{{filetype}}', filetype)
-    :gsub('{{content}}', safe_content)
-    :gsub('{{prompt}}', safe_prompt)
+  return result
 end
 
 function M.default_template()
   return "Filetype: {{filetype}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}"
+end
+
+-- Print the prepared prompt for the current buffer to :messages.
+-- If user_prompt is nil, asks for input interactively.
+function M.preview(bufnr, user_prompt, template)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+
+  local function show(input)
+    local prepared = M.build(bufnr, input or '', template)
+    vim.notify('--- SVEN PREPARED PROMPT ---\n' .. prepared .. '\n--- END ---', vim.log.levels.INFO)
+  end
+
+  if user_prompt ~= nil then
+    show(user_prompt)
+  else
+    vim.ui.input({ prompt = 'Ask sven: ' }, show)
+  end
 end
 
 return M

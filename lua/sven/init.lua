@@ -65,6 +65,10 @@ function M.setup(user_config)
     M.ask('float')
   end, { desc = 'Open sven with a prepared prompt in a floating window' })
 
+  vim.api.nvim_create_user_command('SvenPreviewPrompt', function()
+    prompt.preview()
+  end, { desc = 'Preview the prepared prompt for the current buffer (asks for prompt)' })
+
   -- Optional keymaps
   if M.config.keymap then
     vim.keymap.set('n', M.config.keymap, function()
@@ -90,31 +94,32 @@ end
 
 function M.ask(mode, user_prompt)
   mode = mode or M.config.default_window
-  user_prompt = user_prompt or M.prompt_for_input()
+  local bufnr = vim.api.nvim_get_current_buf()
 
-  local prepared = prompt.build(
-    vim.api.nvim_get_current_buf(),
-    user_prompt,
-    M.config.prompt_template
-  )
+  if user_prompt then
+    M.open_with_prompt(mode, bufnr, user_prompt)
+    return
+  end
 
-  if mode == 'float' then
-    window.open_float(M.config.float, prepared)
+  if vim.ui.input then
+    vim.ui.input({ prompt = 'Ask sven: ' }, function(input)
+      M.open_with_prompt(mode, bufnr, input or '')
+    end)
   else
-    window.open_vsplit(prepared)
+    M.open_with_prompt(mode, bufnr, vim.fn.input('Ask sven: '))
   end
 end
 
-function M.prompt_for_input()
-  if vim.ui.input then
-    local result = nil
-    vim.ui.input({ prompt = 'Ask sven: ' }, function(input)
-      result = input
-    end)
-    return result or ''
-  else
-    return vim.fn.input('Ask sven: ')
-  end
+function M.open_with_prompt(mode, bufnr, user_prompt)
+  vim.schedule(function()
+    local prepared = prompt.build(bufnr, user_prompt, M.config.prompt_template)
+
+    if mode == 'float' then
+      window.open_float(M.config.float, prepared)
+    else
+      window.open_vsplit(prepared)
+    end
+  end)
 end
 
 return M

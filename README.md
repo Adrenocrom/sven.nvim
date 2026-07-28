@@ -52,15 +52,21 @@ Then restart Neovim.
 
 ## Usage
 
-| Command            | Description                                  |
-|--------------------|----------------------------------------------|
-| `:Sven`            | Open `sven` in the default window            |
-| `:Sven vsplit`     | Open `sven` in a vertical split              |
-| `:Sven float`      | Open `sven` in a floating window             |
-| `:SvenVsplit`      | Convenience command for vertical split       |
-| `:SvenFloat`       | Convenience command for floating window      |
+| Command            | Description                                                   |
+|--------------------|---------------------------------------------------------------|
+| `:Sven`            | Open `sven` in the default window                             |
+| `:Sven vsplit`     | Open `sven` in a vertical split                               |
+| `:Sven float`      | Open `sven` in a floating window                              |
+| `:SvenVsplit`      | Convenience command for vertical split                        |
+| `:SvenFloat`       | Convenience command for floating window                         |
+| `:SvenAsk`         | Ask `sven` about the current buffer (uses prepared prompt)    |
+| `:SvenAsk vsplit`  | Same as `:SvenAsk` but in a vertical split                    |
+| `:SvenAsk float`   | Same as `:SvenAsk` but in a floating window                   |
+| `:SvenAskVsplit`   | Convenience command for `:SvenAsk` in a vertical split        |
+| `:SvenAskFloat`    | Convenience command for `:SvenAsk` in a floating window       |
+| `:SvenPreviewPrompt` | Preview the prepared prompt without opening `sven`          |
 
-Default keymap: `<leader>sv`
+Default keymaps: `<leader>sv` (open), `<leader>sa` (ask)
 
 ## Configuration
 
@@ -72,12 +78,19 @@ require('sven').setup({
   -- Keymap to open sven. Set to false to disable.
   keymap = '<leader>sv',
 
+  -- Keymap to ask sven about the current buffer. Set to false to disable.
+  keymap_ask = '<leader>sa',
+
   -- Floating window options (only used when default_window = 'float')
   float = {
     width = 0.8,
     height = 0.8,
     border = 'rounded', -- 'single', 'double', 'shadow', 'none', etc.
   },
+
+  -- Template used to build the prepared prompt for :SvenAsk.
+  -- Available placeholders: {{filetype}}, {{content}}, {{prompt}}
+  prompt_template = "Filetype: {{filetype}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}",
 })
 ```
 
