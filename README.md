@@ -5,7 +5,6 @@ A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven
 <p align="center">
   <img src="https://img.shields.io/badge/Neovim-0.7%2B-green?logo=neovim" alt="Neovim 0.7+">
   <img src="https://img.shields.io/badge/Lua-blue?logo=lua" alt="Lua">
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT License">
 </p>
 
 ## Features
