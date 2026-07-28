@@ -193,7 +193,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
       -- the content so the REPL's stdin echo can be filtered out.
       local single_line = text:gsub('\n', ' ')
       appender.set_last_user_content(single_line)
-      append('User: ' .. single_line)
+      append('hihiUser: ' .. single_line)
       append('')
       if job_id and job_id > 0 then
         pcall(vim.fn.chansend, job_id, single_line .. '\n')
