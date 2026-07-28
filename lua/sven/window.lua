@@ -1,7 +1,7 @@
 local M = {}
 
 -- Default filetype for the terminal buffer. Can be overridden via config.
-M.default_filetype = 'sven'
+M.default_filetype = 'markdown'
 
 -- Close a window if it is still valid
 local function safe_close_win(win)
