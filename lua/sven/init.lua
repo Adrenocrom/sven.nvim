@@ -23,7 +23,7 @@ M.config = {
   prompt_template = prompt.default_template(),
   -- Filetype assigned to the terminal buffer. Set to 'markdown' to get
   -- Markdown highlighting/conceal, or any other filetype you prefer.
-  terminal_filetype = 'sven',
+  terminal_filetype = 'markdown',
 }
 
 function M.setup(user_config)
