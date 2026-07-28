@@ -179,6 +179,12 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     append('_Failed to start sven._')
   elseif prepared_prompt and prepared_prompt ~= '' then
     vim.defer_fn(function()
+      -- Display the multi-line prepared prompt nicely in the buffer.
+      append('User: ' .. prepared_prompt)
+      append('')
+      -- Send it to the REPL. The REPL will echo it back; we suppress that
+      -- echo by remembering the normalized content.
+      appender.set_last_user_content(prepared_prompt)
       send_input(prepared_prompt)
     end, 100)
   end
@@ -193,7 +199,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
       -- the content so the REPL's stdin echo can be filtered out.
       local single_line = text:gsub('\n', ' ')
       appender.set_last_user_content(single_line)
-      append('hihiUser: ' .. single_line)
+      append('User: ' .. single_line)
       append('')
       if job_id and job_id > 0 then
         pcall(vim.fn.chansend, job_id, single_line .. '\n')
