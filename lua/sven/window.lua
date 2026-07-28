@@ -17,9 +17,9 @@ local function safe_close_buf(buf)
   end
 end
 
--- Strip ANSI escape sequences from a string.
+-- Strip ANSI escape sequences and stray carriage returns from a string.
 local function strip_ansi(s)
-  return s:gsub('\27%[[%d;]*%a', '')
+  return s:gsub('\27%[[%d;]*%a', ''):gsub('\r', '')
 end
 
 -- Create an appender function for `buf` that handles partial lines and keeps
