@@ -14,20 +14,26 @@ local function safe_close_buf(buf)
   end
 end
 
--- Open sven in a vertical split terminal
-function M.open_vsplit()
-  -- Save current window so we can return to it on exit
-  local prev_win = vim.api.nvim_get_current_win()
+-- Build the shell command to run sven with an optional prepared prompt.
+-- If prepared_prompt is given, it is piped into sven via stdin.
+local function sven_command(prepared_prompt)
+  if prepared_prompt and prepared_prompt ~= '' then
+    -- Escape single quotes for the echo command
+    local safe = prepared_prompt:gsub("'", "'\\''")
+    return "printf '%s' '" .. safe .. "' | sven"
+  end
+  return 'sven'
+end
 
+-- Open sven in a vertical split terminal
+function M.open_vsplit(prepared_prompt)
   vim.cmd('vsplit')
   local win = vim.api.nvim_get_current_win()
   local buf = vim.api.nvim_create_buf(false, false)
   vim.api.nvim_win_set_buf(win, buf)
 
-  vim.fn.termopen('sven', {
+  vim.fn.termopen(sven_command(prepared_prompt), {
     on_exit = function(_, _, _)
-      -- Optional: close the window when sven exits
-      -- Comment out the next two lines if you prefer to keep the buffer
       safe_close_win(win)
       safe_close_buf(buf)
     end,
@@ -50,7 +56,7 @@ function M.open_vsplit()
 end
 
 -- Open sven in a centered floating terminal
-function M.open_float(opts)
+function M.open_float(opts, prepared_prompt)
   opts = opts or {}
   local width = math.floor(vim.o.columns * (opts.width or 0.8))
   local height = math.floor(vim.o.lines * (opts.height or 0.8))
@@ -68,7 +74,7 @@ function M.open_float(opts)
     border = opts.border or 'rounded',
   })
 
-  vim.fn.termopen('sven', {
+  vim.fn.termopen(sven_command(prepared_prompt), {
     on_exit = function(_, _, _)
       safe_close_win(win)
       safe_close_buf(buf)
