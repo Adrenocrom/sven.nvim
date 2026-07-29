@@ -1,4 +1,3 @@
-local M = {}
 
 M.default_filetype = 'markdown'
 
@@ -198,15 +197,17 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		end,
 	})
 
+	local is_closing = false
 	vim.api.nvim_create_autocmd('WinClosed', {
-		callback = function(args)
-			if args.data.win == win then
-				if job_id and job_id > 0 then
-					pcall(vim.fn.jobstop, job_id)
-					job_id = nil
-				end
-				safe_close_buf(buf)
+		callback = function()
+			if is_closing then return end
+			if job_id and job_id > 0 then
+				pcall(vim.fn.jobstop, job_id)
+				job_id = nil
 			end
+			is_closing = true
+			safe_close_buf(buf)
+			is_closing = false
 		end,
 	})
 
