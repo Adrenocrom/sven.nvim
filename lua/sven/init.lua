@@ -20,7 +20,7 @@ function M.setup(user_config)
 
 	vim.api.nvim_create_user_command('Sven', function(opts)
 		local mode = opts.args ~= '' and opts.args or M.config.default_window
-		local list = ["ask", "chat"]
+		local list = {"ask", "chat"}
 		vim.ui.select(list, {prompt = "Choose:" }, function(item) 
 			if item == "ask" then
 				M.ask(mode)
