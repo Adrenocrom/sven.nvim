@@ -51,8 +51,7 @@ function M.build(bufnr, user_prompt, template, range_type)
 		filepath = '[unnamed]'
 	end
     
-    local content = get_buffer_content(bufnr, "n")  -- Pass the flag!
-    --local content = get_buffer_content(bufnr, range_type)  -- Pass the flag!
+    local content = get_buffer_content(bufnr, range_type)  -- Pass the flag!
 
 	local result = template
 	result = replace_all(result, '{{filetype}}', filetype)
