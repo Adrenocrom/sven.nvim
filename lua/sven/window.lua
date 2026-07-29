@@ -46,9 +46,9 @@ local function create_appender(buf)
     local filtered = {}
     for _, line in ipairs(lines) do
       -- Do not display any stdin echo / User: lines in the output buffer.
-      --if line:match('^%s*User:') then
-      --  goto continue
-      --end
+      if line:match('^%s*User:') then
+        goto continue
+      end
 
       local blank = is_blank_line(line)
       if blank and prev_blank then
