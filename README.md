@@ -1,6 +1,6 @@
 # sven.nvim
 
-A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven) CLI inside a terminal window — no temporary files, no external dependencies, no fuss.
+A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven) CLI in a dedicated buffer and renders its output inline — no temporary files, no external dependencies, no fuss.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Neovim-0.7%2B-green?logo=neovim" alt="Neovim 0.7+">
@@ -10,7 +10,7 @@ A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven
 ## Features
 
 - 🪟 Open `sven` in a **vertical split** or a **floating window**
-- ⌨️ Starts in insert mode automatically so `sven` receives your keystrokes right away
+- 💬 Send messages to `sven` via `vim.ui.input` prompts
 - 🧹 Closes the window automatically when `sven` exits
 - 📦 Zero dependencies beyond Neovim and `sven`
 - ⚙️ Simple, configurable Lua setup
@@ -52,19 +52,19 @@ Then restart Neovim.
 
 ## Usage
 
-| Command            | Description                                                   |
-|--------------------|---------------------------------------------------------------|
-| `:Sven`            | Open `sven` in the default window                             |
-| `:Sven vsplit`     | Open `sven` in a vertical split                               |
-| `:Sven float`      | Open `sven` in a floating window                              |
-| `:SvenVsplit`      | Convenience command for vertical split                        |
-| `:SvenFloat`       | Convenience command for floating window                         |
-| `:SvenAsk`         | Ask `sven` about the current buffer (uses prepared prompt)    |
-| `:SvenAsk vsplit`  | Same as `:SvenAsk` but in a vertical split                    |
-| `:SvenAsk float`   | Same as `:SvenAsk` but in a floating window                   |
-| `:SvenAskVsplit`   | Convenience command for `:SvenAsk` in a vertical split        |
-| `:SvenAskFloat`    | Convenience command for `:SvenAsk` in a floating window       |
-| `:SvenPreviewPrompt` | Preview the prepared prompt without opening `sven`          |
+| Command              | Description                                                    |
+|----------------------|----------------------------------------------------------------|
+| `:Sven`              | Open `sven` in the default window                              |
+| `:Sven vsplit`       | Open `sven` in a vertical split                                |
+| `:Sven float`        | Open `sven` in a floating window                               |
+| `:SvenVsplit`        | Convenience command for vertical split                         |
+| `:SvenFloat`         | Convenience command for floating window                        |
+| `:SvenAsk`           | Ask `sven` about the current buffer (uses prepared prompt)     |
+| `:SvenAsk vsplit`    | Same as `:SvenAsk` but in a vertical split                     |
+| `:SvenAsk float`     | Same as `:SvenAsk` but in a floating window                    |
+| `:SvenAskVsplit`     | Convenience command for `:SvenAsk` in a vertical split           |
+| `:SvenAskFloat`      | Convenience command for `:SvenAsk` in a floating window          |
+| `:SvenPreviewPrompt` | Preview the prepared prompt without opening `sven`             |
 
 Default keymaps: `<leader>sv` (open), `<leader>sa` (ask)
 
@@ -89,41 +89,35 @@ require('sven').setup({
   },
 
   -- Template used to build the prepared prompt for :SvenAsk.
-  -- Available placeholders: {{filetype}}, {{content}}, {{prompt}}
-  prompt_template = "Filetype: {{filetype}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}",
+  -- Available placeholders: {{filetype}}, {{filepath}}, {{content}}, {{prompt}}
+  prompt_template = "Regarding the following text, {{prompt}}:\n\nFiletype: {{filetype}}\nFilepath: {{filepath}}\n\nContent:\n{{content}}",
 
-  -- Filetype assigned to the terminal buffer. Use 'markdown' for Markdown
+  -- Filetype assigned to the sven output buffer. Use 'markdown' for Markdown
   -- highlighting/conceal, or any other filetype you prefer.
-  terminal_filetype = 'sven',
+  terminal_filetype = 'markdown',
 })
 ```
 
 ## Window controls
 
-Inside the terminal window:
+Inside the sven buffer:
 
-- **Terminal mode** — all keys are sent directly to `sven`
-- **`<Esc>`** — enter normal mode
-- **`q`** in normal mode — close the window
-- **`<Esc><Esc>`** in a floating window — close the floating window
+- **`i`** in normal mode — open an input prompt to send a message to `sven`
+- **`q`** in normal mode — close the window and stop the job
+- **`<Esc>`** in a floating window — close the floating window
 
-## Terminal filetype
+## Output buffer
 
-The terminal buffer is assigned a filetype (default: `sven`). You can set it
-to `markdown` in your config to get Markdown syntax highlighting and
-conceal in the terminal window:
+`sven` runs as a background job via `jobstart()`. Its stdout is streamed into a
+regular `nofile` buffer, with ANSI escape sequences and carriage returns
+stripped. The buffer is assigned the configured `terminal_filetype` (default:
+`markdown`) so you get syntax highlighting when viewing it in normal mode.
 
-```lua
-require('sven').setup({
-  terminal_filetype = 'markdown',
-})
-```
-
-Note: terminal buffers render raw process output, so Markdown highlighting
-only applies to the buffer text (for example, after pressing `<Esc>` to enter
-normal mode). For clean Markdown rendering of `sven` output, capture it to a
-normal buffer instead of a terminal.
+User input is rendered manually as a markdown section; the raw stdin echo from
+the `sven` REPL is suppressed.
 
 ## Why no temp file?
 
-`sven` is an interactive tool. This plugin runs it directly in a Neovim `:terminal` buffer via `termopen('sven', ...)`. There is no need to capture output to a temporary file because the terminal itself is the interface.
+`sven` is an interactive tool. This plugin runs it as a background job and streams
+its output directly into a Neovim buffer. There is no need to capture output to a
+temporary file because the buffer itself is the interface.
