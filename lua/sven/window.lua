@@ -88,6 +88,26 @@ local function create_appender(buf)
 	return append, set_last_sent
 end
 
+local function format_display(text)
+    -- 1️⃣  Keep only the first 5 “real” lines
+    local kept = {}
+    for line in text:gmatch("[^\r\n]+") do        -- split on any newline variant
+        table.insert(kept, line)
+        if #kept == 5 then break end             -- stop after five lines
+    end
+
+    -- 2️⃣  Re‑join the kept lines (add “…” if we truncated)
+    local display_text = table.concat(kept, "\n")
+    if #kept == 5 and #text > #display_text then
+        display_text = display_text .. "\n…"      -- optional ellipsis
+    end
+
+    -- 3️⃣  Build the final block exactly as before
+    return "\n## Prompt:\n\n> " ..
+           display_text:gsub("\n", "\n> ") ..
+           "\n\n--\n"
+end
+
 local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 	local buf = vim.api.nvim_create_buf(false, true)
 	local filetype = (config and config.terminal_filetype) or M.default_filetype
@@ -118,7 +138,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		if not text or text == '' then
 			return
 		end
-		local display = '\n## Prompt:\n\n> ' .. text:gsub('\n', '\n> ') .. '\n\n--\n'
+		local display = format_display(text)
 		append(display)
 		set_last_sent(text)
 		if job_id and job_id > 0 then
