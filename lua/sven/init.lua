@@ -27,6 +27,7 @@ function M.setup(user_config)
 			end
 		end)
 	end, {
+	range = true,
 	nargs = '?',
 	complete = function(_, _, _)
 		return { 'vsplit', 'float' }
