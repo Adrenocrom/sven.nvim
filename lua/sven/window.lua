@@ -18,6 +18,13 @@ local function strip_ansi(s)
   return s:gsub('\27%[[%d;]*%a', ''):gsub('\r', '')
 end
 
+local function strip_end_marker(s)
+  -- Remove the end-of-input marker that the Python side uses to detect
+  -- the end of a multi-line prompt. This marker should never be visible
+  -- in the output buffer.
+  return s:gsub('###END_OF_INPUT###', '')
+end
+
 local function create_appender(buf)
   local pending = ''
   local prev_blank = true
