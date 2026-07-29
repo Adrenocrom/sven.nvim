@@ -29,6 +29,7 @@ end
 local function create_appender(buf)
   local pending = ''
   local prev_blank = true
+  local last_sent = ''
 
   local function is_blank_line(line)
     return line:match('^%s*$') ~= nil
@@ -46,7 +47,9 @@ local function create_appender(buf)
     local filtered = {}
     for _, line in ipairs(lines) do
       -- Do not display any stdin echo / User: lines in the output buffer.
-      if line:match('^%s*User:') then
+      -- Also suppress exact echoes of the last line we sent.
+      local without_prefix = line:match('^%s*User:%s*(.*)$') or line
+      if line:match('^%s*User:') or without_prefix == last_sent then
         goto continue
       end
 
@@ -76,7 +79,11 @@ local function create_appender(buf)
     end
   end
 
-  return append
+  local function set_last_sent(text)
+    last_sent = text
+  end
+
+  return append, set_last_sent
 end
 
 -- Open a markdown buffer running `cmd` as a background job.
@@ -93,7 +100,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
   vim.bo[buf].syntax = filetype
 
   local win = make_win(buf)
-  local append = create_appender(buf)
+  local append, set_last_sent = create_appender(buf)
 
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
     '# Sven',
@@ -110,13 +117,13 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     end
     -- Send the whole message as one input line so multi-line prepared
     -- prompts are not processed line-by-line by the sven REPL.
-    local single_line = text:gsub('\n', '')
+    -- Preserve word boundaries by replacing newlines with spaces.
+    local single_line = text:gsub('\n', ' ')
     -- Print the user's input in the buffer before sending it to stdin.
     -- The REPL's own "User:" echo is suppressed by the appender.
-	append('\n## User\n\n')
-    append("> " .. single_line)
-	append('\n\n')
-    --append('')
+    local display = '\n## User\n\n> ' .. text:gsub('\n', '\n> ') .. '\n\n'
+    append(display)
+    set_last_sent(single_line)
     if job_id and job_id > 0 then
       pcall(vim.fn.chansend, job_id, single_line .. '\n')
     end
