@@ -24,7 +24,7 @@ function M.setup(user_config)
 		vim.ui.select(list, {prompt = "Choose:" }, function(item) 
 			if item == "ask" then
 				M.ask(mode)
-			elif  item == "chat" then
+			else if item == "chat" then
 				M.open(mode)
 			end
 		end)
