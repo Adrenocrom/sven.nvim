@@ -170,7 +170,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 
 	vim.keymap.set('n', '<Esc>', function()
 		if job_id and job_id > 0 then
-			pcall(vim.fn.chanclose, job_id)
+			pcall(vim.fn.jobstop, job_id)
 			job_id = nil
 		end
 		safe_close_win(win)
@@ -179,7 +179,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 
 	vim.keymap.set('n', 'q', function()
 		if job_id and job_id > 0 then
-			pcall(vim.fn.chanclose, job_id)
+			pcall(vim.fn.jobstop, job_id)
 			job_id = nil
 		end
 		safe_close_win(win)
@@ -191,10 +191,22 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		once = true,
 		callback = function()
 			if job_id and job_id > 0 then
-				pcall(vim.fn.chanclose, job_id)
+				pcall(vim.fn.jobstop, job_id)
 				job_id = nil
 			end
 			safe_close_win(win)
+		end,
+	})
+
+	vim.api.nvim_create_autocmd('WinClosed', {
+		callback = function(args)
+			if args.data.win == win then
+				if job_id and job_id > 0 then
+					pcall(vim.fn.jobstop, job_id)
+					job_id = nil
+				end
+				safe_close_buf(buf)
+			end
 		end,
 	})
 
