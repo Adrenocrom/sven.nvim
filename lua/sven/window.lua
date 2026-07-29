@@ -1,3 +1,4 @@
+local M = {}
 
 M.default_filetype = 'markdown'
 
