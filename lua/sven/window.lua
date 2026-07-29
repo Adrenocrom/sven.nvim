@@ -22,6 +22,7 @@ local function create_appender(buf)
   local pending = ''
   local prev_blank = true
   local last_sent = ''
+  local last_sent_lines = {}
 
   local function is_blank_line(line)
     return line:match('^%s*$') ~= nil
@@ -32,7 +33,7 @@ local function create_appender(buf)
       return
     end
 
-    text = strip_ansi(pending .. text)
+    text = strip_end_marker(strip_ansi(pending .. text))
     local lines = vim.split(text, '\n', { plain = true })
     pending = table.remove(lines) or ''
 
@@ -41,8 +42,15 @@ local function create_appender(buf)
       -- Do not display any stdin echo / User: lines in the output buffer.
       -- Also suppress exact echoes of the last line we sent.
       local without_prefix = line:match('^%s*User:%s*(.*)$') or line
-      if line:match('^%s*User:') or without_prefix == last_sent then
+      if line:match('^%s*User:') then
         goto continue
+      end
+
+      -- Suppress line-by-line echoes of the last multi-line message we sent.
+      for _, sent_line in ipairs(last_sent_lines) do
+        if without_prefix == sent_line then
+          goto continue
+        end
       end
 
       local blank = is_blank_line(line)
@@ -73,6 +81,10 @@ local function create_appender(buf)
 
   local function set_last_sent(text)
     last_sent = text
+    last_sent_lines = {}
+    for line in text:gmatch('[^\r\n]+') do
+      table.insert(last_sent_lines, line)
+    end
   end
 
   return append, set_last_sent
@@ -94,7 +106,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
     '# Sven',
     '',
-    '_Press `i` to send a message, `q` to close._',
+    '_Press `<CR>` to send a message, `q` to close._',
     '',
   })
 
@@ -104,17 +116,16 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     if not text or text == '' then
       return
     end
-    -- Send the whole message as one input line so multi-line prepared
-    -- prompts are not processed line-by-line by the sven REPL.
-    -- Preserve word boundaries by replacing newlines with spaces.
-    local single_line = text:gsub('\n', ' ')
-    -- Print the user's input in the buffer before sending it to stdin.
+    -- Display the user's input in the buffer before sending it to stdin.
     -- The REPL's own "User:" echo is suppressed by the appender.
     local display = '\n## User\n\n> ' .. text:gsub('\n', '\n> ') .. '\n\n'
     append(display)
-    set_last_sent(single_line)
+    set_last_sent(text)
     if job_id and job_id > 0 then
-      pcall(vim.fn.chansend, job_id, single_line .. '\n')
+      -- Send the raw multi-line text followed by an end-of-input marker.
+      -- The sven Python side reads stdin until it sees ###END_OF_INPUT###,
+      -- so multi-line prepared prompts are delivered as a single prompt.
+      pcall(vim.fn.chansend, job_id, text .. '\n###END_OF_INPUT###\n')
     end
   end
 
@@ -156,8 +167,8 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     end, 100)
   end
 
-  -- Pressing 'i' in normal mode opens an input prompt to talk to sven.
-  vim.keymap.set('n', 'i', function()
+  -- Pressing <CR> in normal mode opens an input prompt to talk to sven.
+  vim.keymap.set('n', '<CR>', function()
     vim.ui.input({ prompt = 'sven> ' }, function(text)
       if not text or text == '' then
         return
@@ -167,6 +178,16 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
   end, { buffer = buf, noremap = true, silent = true })
 
   -- Pressing 'q' in normal mode closes the window and stops the job.
+  -- Also close the floating window with <Esc> in normal mode.
+  vim.keymap.set('n', '<Esc>', function()
+    if job_id and job_id > 0 then
+      pcall(vim.fn.chanclose, job_id)
+      job_id = nil
+    end
+    safe_close_win(win)
+    safe_close_buf(buf)
+  end, { buffer = buf, noremap = true, silent = true })
+
   vim.keymap.set('n', 'q', function()
     if job_id and job_id > 0 then
       pcall(vim.fn.chanclose, job_id)
@@ -218,12 +239,6 @@ function M.open_float(opts, prepared_prompt, config)
       style = 'minimal',
       border = opts.border or 'rounded',
     })
-
-    -- Close floating window with <Esc> in normal mode.
-    vim.keymap.set('n', '<Esc>', function()
-      safe_close_win(win)
-      safe_close_buf(buf)
-    end, { buffer = buf, noremap = true, silent = true })
 
     return win
   end, config)
