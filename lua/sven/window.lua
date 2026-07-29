@@ -139,12 +139,8 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 			if not data then
 				return
 			end
-			for i = 1, #data - 1 do
-				append(data[i] .. '\n')
-			end
-			local last = data[#data]
-			if last and last ~= '' then
-				append(last)
+			for i = 1, #data do
+				append(data[i])
 			end
 			flush()
 		end,
