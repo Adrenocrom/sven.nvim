@@ -61,7 +61,16 @@ local function create_appender(buf)
 		end
 	end
 
-	return append, set_last_sent
+	local function flush()
+		if pending == '' then
+			return
+		end
+		local text = pending
+		pending = ''
+		append(text .. '\n')
+	end
+
+	return append, set_last_sent, flush
 end
 
 local function format_display(text)
