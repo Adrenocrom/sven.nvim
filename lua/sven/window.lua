@@ -151,7 +151,9 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		stdout_buffered = false,
 		stderr_buffered = false,
 		on_stdout = function(_, data, _)
-			print(data)
+			for i = 1, #data do
+				print(data[i])
+			end
 			if not data then
 				return
 			end
