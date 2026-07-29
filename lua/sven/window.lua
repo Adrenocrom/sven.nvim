@@ -118,7 +118,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		if not text or text == '' then
 			return
 		end
-		local display = '\n## User\n\n> ' .. text:gsub('\n', '\n> ') .. '\n\n'
+		local display = '\n## Prompt:\n\n> ' .. text:gsub('\n', '\n> ') .. '\n\n--\n'
 		append(display)
 		set_last_sent(text)
 		if job_id and job_id > 0 then
