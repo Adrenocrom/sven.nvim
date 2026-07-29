@@ -99,7 +99,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 	--vim.bo[buf].modifiable = false         -- cannot change the buffer’s contents
 
 	local win = make_win(buf)
-	local append, set_last_sent = create_appender(buf)
+	local append, set_last_sent, flush = create_appender(buf)
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
 		'# Sven',
@@ -127,9 +127,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		stdout_buffered = false,
 		stderr_buffered = false,
 		on_stdout = function(_, data, _)
-			for i = 1, #data do
-				print(data[i])
-			end
 			if not data then
 				return
 			end
@@ -140,10 +137,12 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 			if last and last ~= '' then
 				append(last)
 			end
+			flush()
 		end,
 		on_stderr = function(_, _, _)
 		end,
 		on_exit = function(_, exit_code, _)
+			flush()
 			append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
 			job_id = nil
 		end,
