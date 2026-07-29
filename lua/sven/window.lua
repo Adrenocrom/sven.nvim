@@ -113,8 +113,8 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     local single_line = text:gsub('\n', '')
     -- Print the user's input in the buffer before sending it to stdin.
     -- The REPL's own "User:" echo is suppressed by the appender.
-	append('\n##User\n\n')
-    append(single_line)
+	append('\n## User\n\n')
+    append("> " .. single_line)
 	append('\n\n')
     --append('')
     if job_id and job_id > 0 then
