@@ -1,5 +1,3 @@
-local M = {}
-
 local window = require('sven.window')
 local prompt = require('sven.prompt')
 
