@@ -4,8 +4,6 @@ local prompt = require('sven.prompt')
 local M = {}
 M.config = {
 	default_window = 'vsplit',
-	keymap = '<leader>sv',
-	keymap_ask = '<leader>sa',
 	float = {
 		width = 0.8,
 		height = 0.8,
@@ -66,18 +64,6 @@ desc = 'Open sven with a prepared prompt from the current buffer',
   vim.api.nvim_create_user_command('SvenPreviewPrompt', function()
 	  prompt.preview()
   end, { desc = 'Preview the prepared prompt for the current buffer (asks for prompt)' })
-
-  if M.config.keymap then
-	  vim.keymap.set('n', M.config.keymap, function()
-		  M.open(M.config.default_window)
-	  end, { desc = 'Open sven', noremap = true, silent = true })
-  end
-
-  if M.config.keymap_ask then
-	  vim.keymap.set('n', M.config.keymap_ask, function()
-		  M.ask(M.config.default_window)
-	  end, { desc = 'Ask sven about current buffer', noremap = true, silent = true })
-  end
 end
 
 function M.open(mode)
