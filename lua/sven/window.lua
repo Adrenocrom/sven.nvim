@@ -19,16 +19,12 @@ local function strip_ansi(s)
 end
 
 local function strip_end_marker(s)
-  -- Remove the end-of-input marker that the Python side uses to detect
-  -- the end of a multi-line prompt. This marker should never be visible
-  -- in the output buffer.
   return s:gsub('###END_OF_INPUT###', '')
 end
 
 local function create_appender(buf)
   local pending = ''
   local prev_blank = true
-  local last_sent = ''
   local last_sent_lines = {}
 
   local function is_blank_line(line)
@@ -46,14 +42,11 @@ local function create_appender(buf)
 
     local filtered = {}
     for _, line in ipairs(lines) do
-      -- Do not display any stdin echo / User: lines in the output buffer.
-      -- Also suppress exact echoes of the last line we sent.
       local without_prefix = line:match('^%s*User:%s*(.*)$') or line
       if line:match('^%s*User:') then
         goto continue
       end
 
-      -- Suppress line-by-line echoes of the last multi-line message we sent.
       for _, sent_line in ipairs(last_sent_lines) do
         if without_prefix == sent_line then
           goto continue
@@ -62,7 +55,6 @@ local function create_appender(buf)
 
       local blank = is_blank_line(line)
       if blank and prev_blank then
-        -- collapse consecutive blank lines
         goto continue
       end
 
@@ -87,7 +79,6 @@ local function create_appender(buf)
   end
 
   local function set_last_sent(text)
-    last_sent = text
     last_sent_lines = {}
     for line in text:gmatch('[^\r\n]+') do
       table.insert(last_sent_lines, line)
@@ -123,15 +114,10 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     if not text or text == '' then
       return
     end
-    -- Display the user's input in the buffer before sending it to stdin.
-    -- The REPL's own "User:" echo is suppressed by the appender.
     local display = '\n## User\n\n> ' .. text:gsub('\n', '\n> ') .. '\n\n'
     append(display)
     set_last_sent(text)
     if job_id and job_id > 0 then
-      -- Send the raw multi-line text followed by an end-of-input marker.
-      -- The sven Python side reads stdin until it sees ###END_OF_INPUT###,
-      -- so multi-line prepared prompts are delivered as a single prompt.
       pcall(vim.fn.chansend, job_id, text .. '\n###END_OF_INPUT###\n')
     end
   end
@@ -147,15 +133,12 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
       for i = 1, #data - 1 do
         append(data[i] .. '\n')
       end
-      -- Ignore the trailing empty chunk that jobstart appends after each
-      -- stdout flush; it creates spurious blank lines in the output buffer.
       local last = data[#data]
       if last and last ~= '' then
         append(last)
       end
     end,
     on_stderr = function(_, _, _)
-      -- stderr is intentionally hidden
     end,
     on_exit = function(_, exit_code, _)
       append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
@@ -167,14 +150,10 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     append('_Failed to start sven._')
   elseif prepared_prompt and prepared_prompt ~= '' then
     vim.defer_fn(function()
-      -- Send the prepared prompt to sven's stdin. The REPL will echo it
-      -- back as a "User:" line, which the appender drops because we no
-      -- longer display stdin in the buffer.
       send_input(prepared_prompt)
     end, 100)
   end
 
-  -- Pressing <CR> in normal mode opens an input prompt to talk to sven.
   vim.keymap.set('n', '<CR>', function()
     vim.ui.input({ prompt = 'sven> ' }, function(text)
       if not text or text == '' then
@@ -184,8 +163,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     end)
   end, { buffer = buf, noremap = true, silent = true })
 
-  -- Pressing 'q' in normal mode closes the window and stops the job.
-  -- Also close the floating window with <Esc> in normal mode.
   vim.keymap.set('n', '<Esc>', function()
     if job_id and job_id > 0 then
       pcall(vim.fn.chanclose, job_id)
@@ -204,7 +181,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     safe_close_buf(buf)
   end, { buffer = buf, noremap = true, silent = true })
 
-  -- Also close the window if the buffer is wiped out.
   vim.api.nvim_create_autocmd('BufWipeout', {
     buffer = buf,
     once = true,
