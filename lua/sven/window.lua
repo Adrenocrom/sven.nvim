@@ -141,7 +141,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 			if last and last ~= '' then
 				append(last)
 			end
-			flush()
 		end,
 		on_stderr = function(_, _, _)
 		end,
