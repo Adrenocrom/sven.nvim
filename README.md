@@ -1,6 +1,6 @@
 # sven.nvim
 
-A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven) CLI in a dedicated buffer and renders its output inline — no temporary files, no external dependencies, no fuss.
+A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven) CLI in a dedicated `nofile` buffer and streams its output inline — no temporary files, no `:terminal`, no external dependencies beyond Neovim and `sven`.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Neovim-0.7%2B-green?logo=neovim" alt="Neovim 0.7+">
@@ -11,9 +11,15 @@ A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven
 
 - 🪟 Open `sven` in a **vertical split** or a **floating window**
 - 💬 Send messages to `sven` via `vim.ui.input` prompts
-- 🧹 Closes the window automatically when `sven` exits
+- 🧹 Close the window with `q` or `<Esc>` when you're done
 - 📦 Zero dependencies beyond Neovim and `sven`
 - ⚙️ Simple, configurable Lua setup
+- 📝 Output buffer uses your chosen `filetype` (default: `markdown`)
+
+## Requirements
+
+- Neovim 0.7 or later
+- The `sven` binary available in your `$PATH`
 
 ## Installation
 
@@ -62,11 +68,14 @@ Then restart Neovim.
 | `:SvenAsk`           | Ask `sven` about the current buffer (uses prepared prompt)     |
 | `:SvenAsk vsplit`    | Same as `:SvenAsk` but in a vertical split                     |
 | `:SvenAsk float`     | Same as `:SvenAsk` but in a floating window                    |
-| `:SvenAskVsplit`     | Convenience command for `:SvenAsk` in a vertical split           |
-| `:SvenAskFloat`      | Convenience command for `:SvenAsk` in a floating window          |
+| `:SvenAskVsplit`     | Convenience command for `:SvenAsk` in a vertical split         |
+| `:SvenAskFloat`      | Convenience command for `:SvenAsk` in a floating window        |
 | `:SvenPreviewPrompt` | Preview the prepared prompt without opening `sven`             |
 
-Default keymaps: `<leader>sv` (open), `<leader>sa` (ask)
+Default keymaps:
+
+- `<leader>sv` — open `sven`
+- `<leader>sa` — ask `sven` about the current buffer
 
 ## Configuration
 
@@ -90,7 +99,7 @@ require('sven').setup({
 
   -- Template used to build the prepared prompt for :SvenAsk.
   -- Available placeholders: {{filetype}}, {{filepath}}, {{content}}, {{prompt}}
-  prompt_template = "Regarding the following text, {{prompt}}:\n\nFiletype: {{filetype}}\nFilepath: {{filepath}}\n\nContent:\n{{content}}",
+  prompt_template = "Regarding the following file, {{prompt}}:\n```{{filetype}}\n{{content}}\n```",
 
   -- Filetype assigned to the sven output buffer. Use 'markdown' for Markdown
   -- highlighting/conceal, or any other filetype you prefer.
@@ -102,9 +111,9 @@ require('sven').setup({
 
 Inside the sven buffer:
 
-- **`i`** in normal mode — open an input prompt to send a message to `sven`
+- **`<CR>`** in normal mode — open an input prompt to send a message to `sven`
 - **`q`** in normal mode — close the window and stop the job
-- **`<Esc>`** in a floating window — close the floating window
+- **`<Esc>`** in normal mode — close the window and stop the job
 
 ## Output buffer
 
@@ -113,8 +122,9 @@ regular `nofile` buffer, with ANSI escape sequences and carriage returns
 stripped. The buffer is assigned the configured `terminal_filetype` (default:
 `markdown`) so you get syntax highlighting when viewing it in normal mode.
 
-User input is rendered manually as a markdown section; the raw stdin echo from
-the `sven` REPL is suppressed.
+User input is rendered manually as a markdown section. The plugin communicates
+with `sven` using the `SVEN_PLUGIN_MODE=1` environment variable and sends each
+prompt followed by an end-of-input marker (`###END_OF_INPUT###`).
 
 ## Why no temp file?
 

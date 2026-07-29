@@ -1,4 +1,4 @@
-*sven.txt*        Neovim plugin for the sven CLI
+*sven.txt*        A minimal Neovim interface for the sven CLI
 
 CONTENTS                                            *sven-contents*
     Introduction..................................................|sven-intro|
@@ -9,8 +9,13 @@ CONTENTS                                            *sven-contents*
 INTRODUCTION                                      *sven-intro*
 
 sven.nvim opens the `sven` command-line tool inside Neovim in either a
-vertical split or a floating terminal window. No temporary files are used;
-sven runs directly in a `:terminal` buffer.
+vertical split or a floating window. No temporary files are used; sven runs
+as a background job and its stdout is streamed into a regular `nofile` buffer.
+
+REQUIREMENTS                                      *sven-requirements*
+
+- Neovim 0.7 or later
+- The `sven` binary in your `$PATH`
 
 COMMANDS                                        *sven-commands*
 
@@ -18,10 +23,10 @@ COMMANDS                                        *sven-commands*
     Open sven. With no argument, uses the configured `default_window`.
 
 :SvenVsplit                                     *:SvenVsplit*
-    Open sven in a vertical split terminal.
+    Open sven in a vertical split.
 
 :SvenFloat                                      *:SvenFloat*
-    Open sven in a centered floating terminal.
+    Open sven in a centered floating window.
 
 :SvenAsk [vsplit|float]                         *:SvenAsk*
     Ask sven about the current buffer. Builds a prepared prompt from the
@@ -35,23 +40,23 @@ COMMANDS                                        *sven-commands*
 
 :SvenPreviewPrompt                              *:SvenPreviewPrompt*
     Preview the prepared prompt that would be sent to sven without opening
-    the terminal. Useful for debugging.
+    the window. Useful for debugging.
 
 CONFIGURATION                                   *sven-config*
 
     require('sven').setup({
       default_window = 'vsplit',   -- 'vsplit' or 'float'
       keymap = '<leader>sv',       -- set to false to disable
-      keymap_ask = '<leader>sa', -- set to false to disable
+      keymap_ask = '<leader>sa',   -- set to false to disable
       float = {
         width = 0.8,
         height = 0.8,
         border = 'rounded',      -- 'single', 'double', 'shadow', etc.
       },
-      prompt_template = "Filetype: {{filetype}}\n\nContent:\n{{content}}\n\nRequest:\n{{prompt}}",
-      -- Filetype assigned to the terminal buffer. Use 'markdown' for
+      prompt_template = "Regarding the following file, {{prompt}}:\n```{{filetype}}\n{{content}}\n```",
+      -- Filetype assigned to the sven output buffer. Use 'markdown' for
       -- Markdown highlighting/conceal, or any other filetype you prefer.
-      terminal_filetype = 'sven',
+      terminal_filetype = 'markdown',
     })
 
 MAPPINGS                                        *sven-mappings*
@@ -59,21 +64,18 @@ MAPPINGS                                        *sven-mappings*
 <leader>sv        Open sven using the default window (default mapping).
 <leader>sa        Ask sven about the current buffer (default mapping).
 
-Inside the terminal window:
-  - Terminal mode sends all keys to sven.
-  - Press <Esc> to enter normal mode, then `q` to close the window.
-  - In a floating window, <Esc><Esc> in terminal mode also closes it.
+Inside the sven buffer:
+  - <CR> in normal mode opens an input prompt to send a message.
+  - q in normal mode closes the window and stops the job.
+  - <Esc> in normal mode closes the window and stops the job.
 
-TERMINAL FILETYPE                               *sven-terminal-filetype*
+OUTPUT BUFFER                                   *sven-output-buffer*
 
-The terminal buffer is assigned a filetype (default: 'sven'). Set it to
-'markdown' to get Markdown syntax highlighting and conceal:
+The output buffer is a regular `nofile` buffer. sven stdout is streamed into it
+via `jobstart()`. ANSI escape sequences and carriage returns are stripped. The
+buffer is assigned the configured `terminal_filetype` (default: 'markdown')
+for syntax highlighting.
 
-    require('sven').setup({
-      terminal_filetype = 'markdown',
-    })
-
-Note: terminal buffers render raw process output, so Markdown highlighting
-only applies to the buffer text (for example, after pressing <Esc> to enter
-normal mode). For clean Markdown rendering, capture sven output to a normal
-buffer instead of a terminal.
+User input is rendered manually as a markdown section. The plugin sets the
+`SVEN_PLUGIN_MODE=1` environment variable when launching sven and sends each
+prompt followed by an end-of-input marker (`###END_OF_INPUT###`).
