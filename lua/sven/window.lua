@@ -1,31 +1,23 @@
 local M = {}
 
--- Default filetype for the sven output buffer. Can be overridden via config.
 M.default_filetype = 'markdown'
 
--- Close a window if it is still valid
 local function safe_close_win(win)
   if win and vim.api.nvim_win_is_valid(win) then
     vim.api.nvim_win_close(win, true)
   end
 end
 
--- Close a buffer if it is still valid
 local function safe_close_buf(buf)
   if buf and vim.api.nvim_buf_is_valid(buf) then
     vim.api.nvim_buf_delete(buf, { force = true })
   end
 end
 
--- Strip ANSI escape sequences and stray carriage returns from a string.
 local function strip_ansi(s)
   return s:gsub('\27%[[%d;]*%a', ''):gsub('\r', '')
 end
 
--- Create an appender for `buf` that handles partial lines, strips ANSI/CR
--- characters, collapses consecutive blank lines, drops all "User:" lines
--- (stdin is not displayed in the buffer), and keeps the cursor at the end
--- of the buffer.
 local function create_appender(buf)
   local pending = ''
   local prev_blank = true
@@ -86,9 +78,6 @@ local function create_appender(buf)
   return append, set_last_sent
 end
 
--- Open a markdown buffer running `cmd` as a background job.
--- If `prepared_prompt` is provided, it is sent to the job's stdin after a
--- short delay so the process has time to initialize.
 local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
   local buf = vim.api.nvim_create_buf(false, true)
   local filetype = (config and config.terminal_filetype) or M.default_filetype
@@ -129,7 +118,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     end
   end
 
-  job_id = vim.fn.jobstart(cmd, {
+  job_id = vim.fn.jobstart("SVEN_PLUGIN_MODE=1 " .. cmd, {
     stdin = 'pipe',
     stdout_buffered = false,
     stderr_buffered = false,
@@ -203,8 +192,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
   return job_id
 end
 
--- Open sven in a vertical split markdown buffer.
--- If prepared_prompt is given, it is sent to sven's stdin.
 function M.open_vsplit(prepared_prompt, config)
   return open_markdown_chat('sven', prepared_prompt, function(buf)
     vim.cmd('vsplit')
@@ -214,8 +201,6 @@ function M.open_vsplit(prepared_prompt, config)
   end, config)
 end
 
--- Open sven in a centered floating markdown buffer.
--- If prepared_prompt is given, it is sent to sven's stdin.
 function M.open_float(opts, prepared_prompt, config)
   opts = opts or {}
   local width = math.floor(vim.o.columns * (opts.width or 0.8))
