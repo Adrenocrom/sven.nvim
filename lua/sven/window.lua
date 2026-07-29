@@ -23,23 +23,15 @@ local function strip_ansi(s)
 end
 
 -- Create an appender for `buf` that handles partial lines, strips ANSI/CR
--- characters, collapses consecutive blank lines, drops duplicate "User:"
--- lines caused by stdin echo, and keeps the cursor at the end of the buffer.
---
--- Returns a table with two methods:
---   append(text)                -- append text to the buffer
---   set_last_user_content(text) -- remember the last user input for echo filtering
+-- characters, collapses consecutive blank lines, drops all "User:" lines
+-- (stdin is not displayed in the buffer), and keeps the cursor at the end
+-- of the buffer.
 local function create_appender(buf)
   local pending = ''
   local prev_blank = true
-  local last_user_content = nil
 
   local function is_blank_line(line)
     return line:match('^%s*$') ~= nil
-  end
-
-  local function normalize(s)
-    return s:gsub('%s+', ' '):gsub('^%s*(.-)%s*$', '%1'):lower()
   end
 
   local function append(text)
@@ -53,21 +45,9 @@ local function create_appender(buf)
 
     local filtered = {}
     for _, line in ipairs(lines) do
-      local user_content = line:match('^%s*User:%s*(.-)%s*$')
-
-      -- Drop empty User: prompts emitted by the sven REPL.
-      if user_content and user_content == '' then
+      -- Do not display any stdin echo / User: lines in the output buffer.
+      if line:match('^%s*User:') then
         goto continue
-      end
-
-      -- Drop User: lines whose content matches the last thing we sent,
-      -- even if whitespace differs. This prevents stdin echo from
-      -- duplicating the prompt in the output buffer.
-      if user_content and last_user_content then
-        if normalize(user_content) == normalize(last_user_content) then
-          last_user_content = nil
-          goto continue
-        end
       end
 
       local blank = is_blank_line(line)
@@ -96,19 +76,7 @@ local function create_appender(buf)
     end
   end
 
-  local function set_last_user_content(content)
-    last_user_content = content
-  end
-
-  local function clear_last_user_content()
-    last_user_content = nil
-  end
-
-  return {
-    append = append,
-    set_last_user_content = set_last_user_content,
-    clear_last_user_content = clear_last_user_content,
-  }
+  return append
 end
 
 -- Open a markdown buffer running `cmd` as a background job.
@@ -125,8 +93,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
   vim.bo[buf].syntax = filetype
 
   local win = make_win(buf)
-  local appender = create_appender(buf)
-  local append = appender.append
+  local append = create_appender(buf)
 
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
     '# Sven',
@@ -180,12 +147,9 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     append('_Failed to start sven._')
   elseif prepared_prompt and prepared_prompt ~= '' then
     vim.defer_fn(function()
-      -- Display the multi-line prepared prompt nicely in the buffer.
-      append('User: ' .. prepared_prompt)
-      append('')
-      -- Send it to the REPL. The REPL will echo it back; we suppress that
-      -- echo by remembering the normalized content.
-      appender.set_last_user_content(prepared_prompt)
+      -- Send the prepared prompt to sven's stdin. The REPL will echo it
+      -- back as a "User:" line, which the appender drops because we no
+      -- longer display stdin in the buffer.
       send_input(prepared_prompt)
     end, 100)
   end
@@ -196,12 +160,10 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
       if not text or text == '' then
         return
       end
-      -- For interactive input we show a local "User:" line and remember
-      -- the content so the REPL's stdin echo can be filtered out.
+      -- Send the input to sven's stdin. The REPL will echo it back as a
+      -- "User:" line, which the appender drops because we no longer display
+      -- stdin in the buffer.
       local single_line = text:gsub('\n', ' ')
-      appender.set_last_user_content(single_line)
-      append('User: ' .. single_line)
-      append('')
       if job_id and job_id > 0 then
         pcall(vim.fn.chansend, job_id, single_line .. '\n')
       end
