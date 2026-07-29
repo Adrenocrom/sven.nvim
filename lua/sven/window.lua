@@ -24,12 +24,7 @@ end
 
 local function create_appender(buf)
 	local pending = ''
-	local prev_blank = true
 	local last_sent_lines = {}
-
-	local function is_blank_line(line)
-		return line:match('^%s*$') ~= nil
-	end
 
 	local function append(text)
 		if not vim.api.nvim_buf_is_valid(buf) then
@@ -42,26 +37,7 @@ local function create_appender(buf)
 
 		local filtered = {}
 		for _, line in ipairs(lines) do
-			local without_prefix = line:match('^%s*User:%s*(.*)$') or line
-			if line:match('^%s*User:') then
-				goto continue
-			end
-
-			for _, sent_line in ipairs(last_sent_lines) do
-				if without_prefix == sent_line then
-					goto continue
-				end
-			end
-
-			local blank = is_blank_line(line)
-			if blank and prev_blank then
-				goto continue
-			end
-
 			table.insert(filtered, line)
-			prev_blank = blank
-
-			::continue::
 		end
 
 		if #filtered == 0 then
