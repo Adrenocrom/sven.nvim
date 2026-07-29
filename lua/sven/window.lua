@@ -111,6 +111,10 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     -- Send the whole message as one input line so multi-line prepared
     -- prompts are not processed line-by-line by the sven REPL.
     local single_line = text:gsub('\n', ' ')
+    -- Print the user's input in the buffer before sending it to stdin.
+    -- The REPL's own "User:" echo is suppressed by the appender.
+    append('User: ' .. single_line)
+    append('')
     if job_id and job_id > 0 then
       pcall(vim.fn.chansend, job_id, single_line .. '\n')
     end
@@ -160,13 +164,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
       if not text or text == '' then
         return
       end
-      -- Send the input to sven's stdin. The REPL will echo it back as a
-      -- "User:" line, which the appender drops because we no longer display
-      -- stdin in the buffer.
-      local single_line = text:gsub('\n', ' ')
-      if job_id and job_id > 0 then
-        pcall(vim.fn.chansend, job_id, single_line .. '\n')
-      end
+      send_input(text)
     end)
   end, { buffer = buf, noremap = true, silent = true })
 
