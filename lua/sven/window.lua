@@ -115,7 +115,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
     -- The REPL's own "User:" echo is suppressed by the appender.
 	append('\n##User\n\n')
     append(single_line)
-	append('\n\n---')
+	append('\n\n')
     --append('')
     if job_id and job_id > 0 then
       pcall(vim.fn.chansend, job_id, single_line .. '\n')
