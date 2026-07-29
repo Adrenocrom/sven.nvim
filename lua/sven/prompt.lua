@@ -41,7 +41,7 @@ function M.build(bufnr, user_prompt, template)
 end
 
 function M.default_template()
-	return "Regarding the following text, {{prompt}}:\n\nFiletype: {{filetype}}\nFilepath: {{filepath}}\n\nContent:\n{{content}}"
+	return "Regarding the following file, {{prompt}}:\n```{{filetype}}\n{{content}}\n```"
 end
 
 function M.preview(bufnr, user_prompt, template)
