@@ -6,7 +6,7 @@ local function get_buffer_content(bufnr, range_type)
 	end
 
     -- If user wants visual selection (range type "v"), grab only that. 
-    if range_type == "v" and arg.range > 0 then  
+    if range_type == "v" then  
         local start_pos = vim.fn.getpos("'<")
         local end_pos   = vim.fn.getpos("'>")
         
