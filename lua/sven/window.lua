@@ -89,7 +89,7 @@ local function format_display(text)
 
 	return '\n## Prompt:\n\n> ' ..
 		display_text:gsub('\n', '\n> ') ..
-		'\n\n--\n'
+		'\n\n---\n'
 end
 
 local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
