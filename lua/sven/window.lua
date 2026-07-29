@@ -98,9 +98,9 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 	vim.bo[buf].filetype = filetype
 	vim.bo[buf].syntax = filetype
 
-	vim.bo[buf].readonly  = true          -- <--- prevents :w and similar writes
+	--vim.bo[buf].readonly  = true          -- <--- prevents :w and similar writes
 	-- or (equivalent effect)
-	vim.bo[buf].modifiable = false         -- cannot change the buffer’s contents
+	--vim.bo[buf].modifiable = false         -- cannot change the buffer’s contents
 
 	local win = make_win(buf)
 	local append, set_last_sent = create_appender(buf)
