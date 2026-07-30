@@ -168,15 +168,6 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		end)
 	end, { buffer = buf, noremap = true, silent = true })
 
-	vim.keymap.set('n', '<Esc>', function()
-		if job_id and job_id > 0 then
-			pcall(vim.fn.jobstop, job_id)
-			job_id = nil
-		end
-		safe_close_win(win)
-		safe_close_buf(buf)
-	end, { buffer = buf, noremap = true, silent = true })
-
 	vim.keymap.set('n', 'q', function()
 		if job_id and job_id > 0 then
 			pcall(vim.fn.jobstop, job_id)
