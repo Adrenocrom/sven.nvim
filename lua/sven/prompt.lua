@@ -8,7 +8,7 @@ local function get_buffer_content(bufnr, range_type)
     if range_type == "v" then
         local start_pos = vim.fn.getpos("'<")
         local end_pos   = vim.fn.getpos("'>")
-        return M.extract_visual_selection(bufnr, start_pos[2], end_pos[2])
+        return M.extract_visual_selection(bufnr, start_pos, end_pos)
 	end
 
 	local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
@@ -25,18 +25,18 @@ local function replace_all(str, pattern, repl)
 	end)
 end
 
--- Helper: extract text between two line numbers (inclusive on both ends). 
-function M.extract_visual_selection(bufnr, start_lnum, end_lnum)
-    -- getpos returns 1-indexed lnums. Convert to 0-indexed for nvim_buf_get_lines which is exclusive at the end.
-    local s = math.max(0, start_lnum - 1)
-    local e = end_lnum                      -- inclusive on both sides; pass +1 because get_lines excludes last line
-    if not (s < e) then
-		return ""
+function M.extract_visual_selection(bufnr, start_pos, end_pos)
+    if start_pos == end_pos then
+    	return table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n")
+    else
+        return table.concat(vim.api.nvim_buf_get_text(
+			bufnr,
+			start_pos[2] - 1,
+			start_pos[3] - 1,
+			end_pos[2] - 1,
+			end_pos[3], {}
+		), "\n")
 	end
-
-	local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, s, 0, e - 1, -1)
-	print(lines)
-    return table.concat(lines, '\n')
 end
 
 function M.build(bufnr, user_prompt, template, range_type)
