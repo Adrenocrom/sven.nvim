@@ -28,18 +28,13 @@ end
 -- Helper: extract text between two line numbers (inclusive on both ends). 
 function M.extract_visual_selection(bufnr, start_lnum, end_lnum)
     -- getpos returns 1-indexed lnums. Convert to 0-indexed for nvim_buf_get_lines which is exclusive at the end.
-	print(start_lnum)
-	print(end_lnum)
     local s = math.max(0, start_lnum - 1)
     local e = end_lnum                      -- inclusive on both sides; pass +1 because get_lines excludes last line
-	print(s)
-	print(e)
-
     if not (s < e) then
 		return ""
 	end
 
-	local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, s, 0, math.min(e - 1, vim.fn.line('$')), -1)
+	local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, s, 0, e - 1, -1)
 	print(lines)
     return table.concat(lines, '\n')
 end
