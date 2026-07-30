@@ -1,3 +1,8 @@
+-- my nvim init.lua:
+-- require('sven').setup()
+-- vim.keymap.set('n', '<leader>a', vim.cmd.Sven, { desc = ' Ai agent' })
+-- vim.keymap.set('v', '<leader>a', ":'<,'>Sven<cr>", { desc = ' Ai agent' })
+
 local window = require('sven.window')
 local prompt = require('sven.prompt')
 
