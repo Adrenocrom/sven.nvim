@@ -5,15 +5,12 @@ local function get_buffer_content(bufnr, range_type)
 		return '[invalid buffer ' .. tostring(bufnr) .. ']'
 	end
 
-    -- If user wants visual selection (range type "v"), grab only that. 
-    if range_type == "v" then  
+    if range_type == "v" then
         local start_pos = vim.fn.getpos("'<")
         local end_pos   = vim.fn.getpos("'>")
-        
         return M.extract_visual_selection(bufnr, start_pos[2], end_pos[2])
 	end
 
-	-- Default: read whole buffer (lines from index 0 to -1)
 	local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
 	if not ok or type(lines) ~= 'table' then
 		return '[failed to read buffer ' .. tostring(bufnr) .. ']'
@@ -22,20 +19,26 @@ local function get_buffer_content(bufnr, range_type)
 	return table.concat(lines, '\n')
 end
 
+local function replace_all(str, pattern, repl)
+	return str:gsub(pattern, function()
+		return repl
+	end)
+end
+
 -- Helper: extract text between two line numbers (inclusive on both ends). 
 function M.extract_visual_selection(bufnr, start_lnum, end_lnum)
     -- getpos returns 1-indexed lnums. Convert to 0-indexed for nvim_buf_get_lines which is exclusive at the end.
-    local s = math.max(0, start_lnum - 1)  
+    local s = math.max(0, start_lnum - 1)
     local e = end_lnum                      -- inclusive on both sides; pass +1 because get_lines excludes last line
-    
+
     if not (s < e and #lines > 0) then return "" end
 
 	local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, s, 0, math.min(e - 1, vim.fn.line('$')), -1)
-	if not ok or type(lines) ~= 'table' then 
+	if not ok or type(lines) ~= 'table' then
         -- Fallback to get_lines if text fails (e.g., for byte offsets issues):
 		lines = pcall(vim.api.nvim_buf_get_lines, bufnr, s, e + 1, false)  
 	end
-    
+
     return table.concat(lines, '\n') .. "\n"  -- Add trailing newline so it looks like a file. 
 end
 
@@ -50,7 +53,8 @@ function M.build(bufnr, user_prompt, template, range_type)
 	if filepath == '' then
 		filepath = '[unnamed]'
 	end
-    
+
+
     local content = get_buffer_content(bufnr, range_type)  -- Pass the flag!
 
 	local result = template
