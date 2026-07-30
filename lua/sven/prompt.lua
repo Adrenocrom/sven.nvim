@@ -40,11 +40,8 @@ function M.extract_visual_selection(bufnr, start_lnum, end_lnum)
 	end
 
 	local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, s, 0, math.min(e - 1, vim.fn.line('$')), -1)
-	if not ok or type(lines) ~= 'table' then
-        -- Fallback to get_lines if text fails (e.g., for byte offsets issues):
-		lines = pcall(vim.api.nvim_buf_get_lines, bufnr, s, e + 1, false) 
-	end
-    return table.concat(lines, '\n') .. "\n"  -- Add trailing newline so it looks like a file. 
+	print(lines)
+    return table.concat(lines, '\n')
 end
 
 function M.build(bufnr, user_prompt, template, range_type)
@@ -59,7 +56,6 @@ function M.build(bufnr, user_prompt, template, range_type)
 		filepath = '[unnamed]'
 	end
 
-
     local content = get_buffer_content(bufnr, range_type)  -- Pass the flag!
 
 	local result = template
@@ -67,7 +63,6 @@ function M.build(bufnr, user_prompt, template, range_type)
 	result = replace_all(result, '{{filepath}}', filepath)
 	result = replace_all(result, '{{content}}', content)
 	result = replace_all(result, '{{prompt}}', user_prompt)
-
 	return result
 end
 
