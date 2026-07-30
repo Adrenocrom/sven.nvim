@@ -35,16 +35,15 @@ function M.extract_visual_selection(bufnr, start_lnum, end_lnum)
 	print(s)
 	print(e)
 
-	local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, s, 0, math.min(e - 1, vim.fn.line('$')), -1)
-	if not ok or type(lines) ~= 'table' then
-        -- Fallback to get_lines if text fails (e.g., for byte offsets issues):
-		lines = pcall(vim.api.nvim_buf_get_lines, bufnr, s, e + 1, false)  
-	end
-
-    if not (s < e and #lines > 0) then
+    if not (s < e) then
 		return ""
 	end
 
+	local ok, lines = pcall(vim.api.nvim_buf_get_text, bufnr, s, 0, math.min(e - 1, vim.fn.line('$')), -1)
+	if not ok or type(lines) ~= 'table' then
+        -- Fallback to get_lines if text fails (e.g., for byte offsets issues):
+		lines = pcall(vim.api.nvim_buf_get_lines, bufnr, s, e + 1, false) 
+	end
     return table.concat(lines, '\n') .. "\n"  -- Add trailing newline so it looks like a file. 
 end
 
