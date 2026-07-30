@@ -1,6 +1,6 @@
 # sven.nvim
 
-A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven) CLI in a dedicated `nofile` buffer and streams its output inline — no temporary files, no `:terminal`, no external dependencies beyond Neovim and `sven`.
+A minimal Neovim plugin that opens the `sven` CLI in a dedicated `nofile` buffer and streams its output inline. It allows you to chat with your AI agent or ask questions about your current code without leaving the editor.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Neovim-0.7%2B-green?logo=neovim" alt="Neovim 0.7+">
@@ -9,12 +9,12 @@ A minimal Neovim plugin that opens the [`sven`](https://github.com/yourname/sven
 
 ## Features
 
-- 🪟 Open `sven` in a **vertical split** or a **floating window**
-- 💬 Send messages to `sven` via `vim.ui.input` prompts
-- 🧹 Close the window with `q` or `<Esc>` when you're done
-- 📦 Zero dependencies beyond Neovim and `sven`
-- ⚙️ Simple, configurable Lua setup
-- 📝 Output buffer uses your chosen `filetype` (default: `markdown`)
+- 🪟 **Flexible Windows**: Open `sven` in a vertical split or a floating window.
+- 💬 **Interactive Chat**: Send messages to `sven` via `vim.ui.input` prompts.
+- 🔍 **Context Awareness**: Ask questions about the current buffer or a specific visual selection.
+- 🧹 **Clean Exit**: Close the window and stop the background job instantly with `q` or `<Esc>`.
+- 📦 **Zero Dependencies**: No temporary files or external plugins required—just Neovim and the `sven` binary.
+- 📝 **Markdown Integration**: Output is streamed into a buffer with markdown highlighting.
 
 ## Requirements
 
@@ -45,89 +45,50 @@ use {
 }
 ```
 
-### Manual
-
-Clone the repo into your Neovim runtime path, e.g.:
-
-```bash
-git clone https://github.com/yourname/sven.nvim.git \
-  ~/.local/share/nvim/site/pack/plugins/start/sven.nvim
-```
-
-Then restart Neovim.
-
 ## Usage
 
-| Command              | Description                                                    |
-|----------------------|----------------------------------------------------------------|
-| `:Sven`              | Open `sven` in the default window                              |
-| `:Sven vsplit`       | Open `sven` in a vertical split                                |
-| `:Sven float`        | Open `sven` in a floating window                               |
-| `:SvenVsplit`        | Convenience command for vertical split                         |
-| `:SvenFloat`         | Convenience command for floating window                        |
-| `:SvenAsk`           | Ask `sven` about the current buffer (uses prepared prompt)     |
-| `:SvenAsk vsplit`    | Same as `:SvenAsk` but in a vertical split                     |
-| `:SvenAsk float`     | Same as `:SvenAsk` but in a floating window                    |
-| `:SvenAskVsplit`     | Convenience command for `:SvenAsk` in a vertical split         |
-| `:SvenAskFloat`      | Convenience command for `:SvenAsk` in a floating window        |
-| `:SvenPreviewPrompt` | Preview the prepared prompt without opening `sven`             |
+The primary entry point is the `:Sven` command. When executed, it will prompt you to choose between **Ask** (send current buffer context) or **Chat** (start a fresh conversation).
 
-Default keymaps:
+### Commands
 
-- `<leader>sv` — open `sven`
-- `<leader>sa` — ask `sven` about the current buffer
+| Command | Description |
+| :--- | :--- |
+| `:Sven` | Open the selection menu (Ask vs Chat) |
+| `:Sven [mode]` | Open the selection menu, defaulting the window to `vsplit` or `float` |
+
+**Pro Tip:** If you have a visual selection active, `:Sven` will automatically detect it and offer to send only the selected text to the agent.
+
+### Window Controls (Inside the Sven Buffer)
+
+- **`<CR>`** (Enter): Open an input prompt to send a new message to `sven`.
+- **`q`** or **`<Esc>`**: Close the window and terminate the `sven` process.
 
 ## Configuration
 
 ```lua
 require('sven').setup({
-  -- 'vsplit' or 'float'
+  -- Default window mode: 'vsplit' or 'float'
   default_window = 'vsplit',
 
-  -- Keymap to open sven. Set to false to disable.
-  keymap = '<leader>sv',
-
-  -- Keymap to ask sven about the current buffer. Set to false to disable.
-  keymap_ask = '<leader>sa',
-
-  -- Floating window options (only used when default_window = 'float')
+  -- Floating window options (used when default_window = 'float')
   float = {
     width = 0.8,
     height = 0.8,
     border = 'rounded', -- 'single', 'double', 'shadow', 'none', etc.
   },
 
-  -- Template used to build the prepared prompt for :SvenAsk.
-  -- Available placeholders: {{filetype}}, {{filepath}}, {{content}}, {{prompt}}
+  -- Template used to build the prompt for "Ask" mode.
+  -- Placeholders: {{filetype}}, {{filepath}}, {{content}}, {{prompt}}
   prompt_template = "Regarding the following file, {{prompt}}:\n```{{filetype}}\n{{content}}\n```",
 
-  -- Filetype assigned to the sven output buffer. Use 'markdown' for Markdown
-  -- highlighting/conceal, or any other filetype you prefer.
+  -- Filetype assigned to the output buffer (default: 'markdown')
   terminal_filetype = 'markdown',
 })
 ```
 
-## Window controls
+## How it Works
 
-Inside the sven buffer:
-
-- **`<CR>`** in normal mode — open an input prompt to send a message to `sven`
-- **`q`** in normal mode — close the window and stop the job
-- **`<Esc>`** in normal mode — close the window and stop the job
-
-## Output buffer
-
-`sven` runs as a background job via `jobstart()`. Its stdout is streamed into a
-regular `nofile` buffer, with ANSI escape sequences and carriage returns
-stripped. The buffer is assigned the configured `terminal_filetype` (default:
-`markdown`) so you get syntax highlighting when viewing it in normal mode.
-
-User input is rendered manually as a markdown section. The plugin communicates
-with `sven` using the `SVEN_PLUGIN_MODE=1` environment variable and sends each
-prompt followed by an end-of-input marker (`###END_OF_INPUT###`).
-
-## Why no temp file?
-
-`sven` is an interactive tool. This plugin runs it as a background job and streams
-its output directly into a Neovim buffer. There is no need to capture output to a
-temporary file because the buffer itself is the interface.
+`sven.nvim` runs the `sven` binary as a background job using `jobstart()`. 
+1. It sets the environment variable `SVEN_PLUGIN_MODE=1` to signal the CLI.
+2. It streams `stdout` directly into a Neovim buffer, stripping ANSI escape codes for a clean look.
+3. It handles user input by appending the prompt to the buffer and sending it to the process with a specific end-of-input marker (`###END_OF_INPUT###`).
