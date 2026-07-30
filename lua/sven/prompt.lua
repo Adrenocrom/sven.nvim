@@ -65,20 +65,4 @@ function M.default_template()
 	return "Regarding the following file, {{prompt}}:\n```{{filetype}}\n{{content}}\n```"
 end
 
--- ... (preview stays mostly unchanged but pass range_type if needed): 
-function M.preview(bufnr, user_prompt, template)
-	bufnr = bufnr or vim.api.nvim_get_current_buf()
-
-	local function show(input)
-		local prepared = M.build(bufnr, input or '', template)
-		vim.notify('--- SVEN PREPARED PROMPT ---\n' .. prepared .. '\n--- END ---', vim.log.levels.INFO)
-	end
-
-	if user_prompt ~= nil then
-		show(user_prompt)
-	else
-		vim.ui.input({ prompt = 'Ask sven: ' }, show)
-	end
-end
-
 return M
