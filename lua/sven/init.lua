@@ -51,7 +51,7 @@ function M.setup(user_config)
 end
 
 function M.open(display_mode)
-	display_mode = mode or M.config.default_window
+	display_mode = display_mode or M.config.default_window
 	if display_mode == 'float' then
 		window.open_float(M.config.float, nil, M.config)
 	else
