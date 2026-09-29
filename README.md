@@ -1,6 +1,6 @@
 # sven.nvim
 
-A minimal Neovim plugin that opens the `sven` CLI in a dedicated `nofile` buffer and streams its output inline. It allows you to chat with your AI agent or ask questions about your current code without leaving the editor.
+A minimal Neovim plugin that opens the `sven-rs` CLI in a dedicated `nofile` buffer and streams its output inline. It allows you to chat with your AI agent or ask questions about your current code without leaving the editor.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Neovim-0.7%2B-green?logo=neovim" alt="Neovim 0.7+">
@@ -13,13 +13,13 @@ A minimal Neovim plugin that opens the `sven` CLI in a dedicated `nofile` buffer
 - 💬 **Interactive Chat**: Send messages to `sven` via `vim.ui.input` prompts.
 - 🔍 **Context Awareness**: Ask questions about the current buffer or a specific visual selection.
 - 🧹 **Clean Exit**: Close the window and stop the background job instantly with `q` or `<Esc>`.
-- 📦 **Zero Dependencies**: No temporary files or external plugins required—just Neovim and the `sven` binary.
+- 📦 **Zero Dependencies**: No temporary files or external plugins required—just Neovim and the `sven-rs` binary.
 - 📝 **Markdown Integration**: Output is streamed into a buffer with markdown highlighting.
 
 ## Requirements
 
 - Neovim 0.7 or later
-- The `sven` binary available in your `$PATH`
+- The `sven-rs` binary available in your `$PATH`
 
 ## Installation
 
@@ -88,7 +88,6 @@ require('sven').setup({
 
 ## How it Works
 
-`sven.nvim` runs the `sven` binary as a background job using `jobstart()`. 
-1. It sets the environment variable `SVEN_PLUGIN_MODE=1` to signal the CLI.
-2. It streams `stdout` directly into a Neovim buffer, stripping ANSI escape codes for a clean look.
-3. It handles user input by appending the prompt to the buffer and sending it to the process with a specific end-of-input marker (`###END_OF_INPUT###`).
+`sven.nvim` runs the `sven-rs` binary as a background job using `jobstart()`. 
+1. It streams `stdout` directly into a Neovim buffer, stripping ANSI escape codes for a clean look.
+2. It handles user input by appending the prompt to the buffer and sending it to the process with a specific end-of-input marker (`###END_OF_INPUT###`).
