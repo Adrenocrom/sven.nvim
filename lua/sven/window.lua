@@ -126,7 +126,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 		end
 	end
 
-	job_id = vim.fn.jobstart('SVEN_PLUGIN_MODE=1 ' .. cmd, {
+	job_id = vim.fn.jobstart(cmd .. ' --end-of-prompt="###END_OF_INPUT###"', {
 		stdin = 'pipe',
 		stdout_buffered = false,
 		stderr_buffered = false,
@@ -192,7 +192,7 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 end
 
 function M.open_vsplit(prepared_prompt, config)
-	return open_markdown_chat('sven', prepared_prompt, function(buf)
+	return open_markdown_chat('sven-rs', prepared_prompt, function(buf)
 		vim.cmd('vsplit')
 		local win = vim.api.nvim_get_current_win()
 		vim.api.nvim_win_set_buf(win, buf)
@@ -207,7 +207,7 @@ function M.open_float(opts, prepared_prompt, config)
 	local row = math.floor((vim.o.lines - height) / 2)
 	local col = math.floor((vim.o.columns - width) / 2)
 
-	return open_markdown_chat('sven', prepared_prompt, function(buf)
+	return open_markdown_chat('sven-rs', prepared_prompt, function(buf)
 		local win = vim.api.nvim_open_win(buf, true, {
 			relative = 'editor',
 			width = width,
