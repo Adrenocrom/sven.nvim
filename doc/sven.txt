@@ -79,3 +79,11 @@ for syntax highlighting.
 User input is rendered manually as a markdown section. The plugin sets the
 `SVEN_PLUGIN_MODE=1` environment variable when launching sven and sends each
 prompt followed by an end-of-input marker (`###END_OF_INPUT###`).
+
+SESSION REUSE                                     *sven-session-reuse*
+
+Only one sven session exists at a time. If `:Sven` is invoked while a session
+is already open, the existing window is focused and a new prompt is sent to
+the running sven process (continuing the same conversation). If the previous
+process has exited, sven is restarted in the same buffer. Closing the window
+with `q` or `<Esc>` terminates the job; the next `:Sven` starts fresh.

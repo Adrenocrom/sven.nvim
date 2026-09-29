@@ -91,3 +91,13 @@ require('sven').setup({
 `sven.nvim` runs the `sven-rs` binary as a background job using `jobstart()`. 
 1. It streams `stdout` directly into a Neovim buffer, stripping ANSI escape codes for a clean look.
 2. It handles user input by appending the prompt to the buffer and sending it to the process with a specific end-of-input marker (`###END_OF_INPUT###`).
+
+### Session Reuse
+
+Only one sven session exists at a time. If you invoke `:Sven` (or `:Sven ask`) while a session is already open, the plugin **reuses** it instead of opening a new buffer:
+
+- The existing window is focused (or re-opened if it was closed).
+- A new prompt is sent to the **running** `sven` process, continuing the same conversation.
+- If the previous process has exited, sven is restarted in the same buffer.
+
+Use `q` or `<Esc>` inside the sven buffer to close the window and terminate the job; the next `:Sven` then starts a fresh session.

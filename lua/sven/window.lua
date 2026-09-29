@@ -2,6 +2,12 @@ local M = {}
 
 M.default_filetype = 'markdown'
 
+-- State of the single live sven session:
+--   { buf, win, job_id, append, flush, send }
+-- Kept across :Sven invocations so an already-open session is reused
+-- instead of spawning a new buffer/window/job every time.
+M.state = nil
+
 local function safe_close_win(win)
 	if win and vim.api.nvim_win_is_valid(win) then
 		vim.api.nvim_win_close(win, true)
@@ -24,7 +30,6 @@ end
 
 local function create_appender(buf)
 	local pending = ''
-	local last_sent_lines = {}
 
 	local function append(text)
 		if not vim.api.nvim_buf_is_valid(buf) then
@@ -35,29 +40,17 @@ local function create_appender(buf)
 		local lines = vim.split(text, '\n', { plain = true })
 		pending = table.remove(lines) or ''
 
-		local filtered = {}
-		for _, line in ipairs(lines) do
-			table.insert(filtered, line)
-		end
-
-		if #filtered == 0 then
+		if #lines == 0 then
 			return
 		end
 
-		vim.api.nvim_buf_set_lines(buf, -1, -1, false, filtered)
+		vim.api.nvim_buf_set_lines(buf, -1, -1, false, lines)
 
 		local line_count = vim.api.nvim_buf_line_count(buf)
 		for _, win in ipairs(vim.fn.win_findbuf(buf)) do
 			if vim.api.nvim_win_is_valid(win) then
 				vim.api.nvim_win_set_cursor(win, { math.max(1, line_count), 0 })
 			end
-		end
-	end
-
-	local function set_last_sent(text)
-		last_sent_lines = {}
-		for line in text:gmatch('[^\r\n]+') do
-			table.insert(last_sent_lines, line)
 		end
 	end
 
@@ -70,7 +63,7 @@ local function create_appender(buf)
 		append(text .. '\n')
 	end
 
-	return append, set_last_sent, flush
+	return append, flush
 end
 
 local function format_display(text)
@@ -92,41 +85,21 @@ local function format_display(text)
 		'\n\n---\n'
 end
 
-local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
-	local buf = vim.api.nvim_create_buf(false, true)
-	local filetype = (config and config.terminal_filetype) or M.default_filetype
-
-	vim.bo[buf].buftype = 'nofile'
-	vim.bo[buf].bufhidden = 'wipe'
-	vim.bo[buf].swapfile = false
-	vim.bo[buf].filetype = filetype
-	vim.bo[buf].syntax = filetype
-
-	local win = make_win(buf)
-	local append, set_last_sent, flush = create_appender(buf)
-
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
+local function header_lines()
+	return {
 		'# Sven',
 		'',
 		'_Press `<CR>` to send a message, `q` to close._',
 		'',
-	})
+	}
+end
 
-	local job_id
+local function job_running(state)
+	return state ~= nil and state.job_id ~= nil and state.job_id > 0
+end
 
-	local function send_input(text)
-		if not text or text == '' then
-			return
-		end
-		local display = format_display(text)
-		append(display)
-		set_last_sent(text)
-		if job_id and job_id > 0 then
-			pcall(vim.fn.chansend, job_id, text .. '\n###END_OF_INPUT###\n')
-		end
-	end
-
-	job_id = vim.fn.jobstart(cmd .. ' --end-of-prompt="###END_OF_INPUT###"', {
+local function start_job(state, cmd)
+	state.job_id = vim.fn.jobstart(cmd .. ' --end-of-prompt="###END_OF_INPUT###"', {
 		stdin = 'pipe',
 		stdout_buffered = false,
 		stderr_buffered = false,
@@ -135,60 +108,139 @@ local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
 				return
 			end
 			for i = 1, #data - 1 do
-				append(data[i] .. '\n')
+				state.append(data[i] .. '\n')
 			end
 			local last = data[#data]
 			if last and last ~= '' then
-				append(last)
+				state.append(last)
 			end
 		end,
 		on_stderr = function(_, _, _)
 		end,
 		on_exit = function(_, exit_code, _)
-			flush()
-			append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
-			job_id = nil
+			state.flush()
+			state.append('\n_--- sven exited (' .. tostring(exit_code) .. ') ---_')
+			state.job_id = nil
 		end,
 	})
+end
 
-	if not job_id or job_id <= 0 then
-		append('_Failed to start sven._')
-	elseif prepared_prompt and prepared_prompt ~= '' then
+local function make_send(state)
+	return function(text)
+		if not text or text == '' then
+			return
+		end
+		state.append(format_display(text))
+		if job_running(state) then
+			pcall(vim.fn.chansend, state.job_id, text .. '\n###END_OF_INPUT###\n')
+		end
+	end
+end
+
+-- Focus the session's window, or open a new one for its buffer if needed.
+local function ensure_window(state, make_win)
+	if state.win and vim.api.nvim_win_is_valid(state.win) then
+		if vim.api.nvim_win_get_buf(state.win) ~= state.buf then
+			vim.api.nvim_win_set_buf(state.win, state.buf)
+		end
+		vim.api.nvim_set_current_win(state.win)
+	else
+		state.win = make_win(state.buf)
+	end
+end
+
+local function close_session(state)
+	if job_running(state) then
+		pcall(vim.fn.jobstop, state.job_id)
+		state.job_id = nil
+	end
+	safe_close_win(state.win)
+	safe_close_buf(state.buf) -- triggers BufWipeout, which clears M.state
+end
+
+local function open_markdown_chat(cmd, prepared_prompt, make_win, config)
+	local state = M.state
+
+	-- Reuse the existing session if its buffer is still alive.
+	if state and vim.api.nvim_buf_is_valid(state.buf) then
+		ensure_window(state, make_win)
+
+		if not job_running(state) then
+			-- Previous session exited: restart in the same buffer.
+			vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, header_lines())
+			start_job(state, cmd)
+			if not job_running(state) then
+				state.append('_Failed to start sven._')
+			end
+		end
+
+		if prepared_prompt and prepared_prompt ~= '' then
+			vim.defer_fn(function()
+				state.send(prepared_prompt)
+			end, 100)
+		end
+		return state.job_id
+	end
+
+	-- No live session: create buffer, window and job from scratch.
+	local filetype = (config and config.terminal_filetype) or M.default_filetype
+	local buf = vim.api.nvim_create_buf(false, true)
+
+	vim.bo[buf].buftype = 'nofile'
+	vim.bo[buf].bufhidden = 'wipe'
+	vim.bo[buf].swapfile = false
+	vim.bo[buf].filetype = filetype
+	vim.bo[buf].syntax = filetype
+
+	state = { buf = buf, win = nil, job_id = nil }
+	M.state = state
+
+	local append, flush = create_appender(buf)
+	state.append = append
+	state.flush = flush
+	state.send = make_send(state)
+
+	state.win = make_win(buf)
+
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, header_lines())
+
+	start_job(state, cmd)
+	if not job_running(state) then
+		state.append('_Failed to start sven._')
+	end
+
+	if prepared_prompt and prepared_prompt ~= '' then
 		vim.defer_fn(function()
-			send_input(prepared_prompt)
+			state.send(prepared_prompt)
 		end, 100)
 	end
 
 	vim.keymap.set('n', '<CR>', function()
 		vim.ui.input({ prompt = 'sven> ' }, function(text)
-			if not text or text == '' then
-				return
-			end
-			send_input(text)
+			state.send(text)
 		end)
 	end, { buffer = buf, noremap = true, silent = true })
 
 	vim.keymap.set('n', 'q', function()
-		if job_id and job_id > 0 then
-			pcall(vim.fn.jobstop, job_id)
-			job_id = nil
-		end
-		safe_close_win(win)
-		safe_close_buf(buf)
+		close_session(state)
 	end, { buffer = buf, noremap = true, silent = true })
 
 	vim.api.nvim_create_autocmd('BufWipeout', {
 		buffer = buf,
 		once = true,
 		callback = function()
-			if job_id and job_id > 0 then
-				pcall(vim.fn.jobstop, job_id)
-				job_id = nil
+			if job_running(state) then
+				pcall(vim.fn.jobstop, state.job_id)
+				state.job_id = nil
 			end
-			safe_close_win(win)
+			safe_close_win(state.win)
+			if M.state == state then
+				M.state = nil
+			end
 		end,
 	})
-	return job_id
+
+	return state.job_id
 end
 
 function M.open_vsplit(prepared_prompt, config)
